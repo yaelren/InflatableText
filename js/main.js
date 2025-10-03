@@ -15,40 +15,35 @@ const InflatableText = {
     camera: null,
     renderer: null,
     controls: null,
-    textMesh: null, // Single text mesh instead of array
-    textMaterial: null,
+    letterMeshes: [], // Array of individual letter objects
     font: null,
     isInitialized: false,
     canvas: null,
-    currentText: "HELLO", // Default text
 
     // Settings
     settings: {
-        inflationSpeed: 0.01,
-        inflationAmount: 0.5, // Maximum inflation distance (shader uniform value)
-        fontSize: 12, // Larger default font size
+        inflationSpeed: 1.0, // Speed of bevel animation (higher = faster)
+        fontSize: 12,
         backgroundColor: '#000000',
+        backgroundImage: null, // Background image texture
+        backgroundImageSprite: null, // Sprite for background image rendering
+        environmentMap: null, // Environment map for reflections
+        transparentBg: false, // Transparent background option
+        useEnvMap: false, // Use background as environment map
+        bgFillMode: 'fill', // 'fill' or 'fit'
 
-        // Material properties
-        metalness: 0.1,
-        roughness: 0.2,
-        transmission: 0.3,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1,
-        opacity: 0.9,
+        // Fixed geometry parameters
+        extrudeDepth: 0.2,
+        curveSegments: 64,
+        bevelSegments: 32,
 
-        // Lighting
-        ambientIntensity: 0.4,
-        mainLightIntensity: 0.8,
-        fillLightIntensity: 0.3,
-        rimLightIntensity: 0.4,
+        // Inflation targets (ONLY thing that animates)
+        targetBevelThickness: 0.23,
+        targetBevelSize: 0.15,
 
-        // TextGeometry extrusion parameters - optimized for rounded balloon edges
-        extrudeDepth: 0.2, // Shallower extrusion for more balloon-like shape
-        curveSegments: 32,
-        bevelThickness: 0.4, // Increased for rounder edges
-        bevelSize: 0.3, // Increased for rounder edges
-        bevelSegments: 16
+        // Floating animation
+        floatSpeed: 0.5,
+        floatAmount: 2.0
     },
 
     // Store light references for runtime updates
@@ -59,9 +54,8 @@ const InflatableText = {
         rim: null
     },
 
-    // Animation state
-    inflation: 0,
-    targetInflation: 1.0
+    // Letter positioning
+    nextLetterX: -20 // Start position for letters
 };
 
 // ========== INITIALIZATION ==========
@@ -87,7 +81,7 @@ function init() {
 
     // Setup scene
     InflatableText.scene = new THREE.Scene();
-    InflatableText.scene.background = new THREE.Color(InflatableText.settings.backgroundColor);
+    updateSceneBackground();
 
     // Setup camera
     InflatableText.camera = new THREE.PerspectiveCamera(
@@ -110,7 +104,7 @@ function init() {
     // Add lighting
     setupLighting();
 
-    // Load font and create initial text
+    // Load font (don't create initial text)
     loadFont();
 
     // Setup controls
@@ -169,6 +163,81 @@ function setupLighting() {
     InflatableText.scene.add(InflatableText.lights.rim);
 }
 
+// ========== BACKGROUND MANAGEMENT ==========
+function updateSceneBackground() {
+    // Remove existing background sprite if any
+    if (InflatableText.settings.backgroundImageSprite) {
+        InflatableText.scene.remove(InflatableText.settings.backgroundImageSprite);
+        InflatableText.settings.backgroundImageSprite = null;
+    }
+
+    if (InflatableText.settings.transparentBg) {
+        // Transparent background
+        InflatableText.scene.background = null;
+    } else if (InflatableText.settings.backgroundImage) {
+        // Use sprite for background image to control fill/fit
+        createBackgroundSprite();
+        InflatableText.scene.background = new THREE.Color(InflatableText.settings.backgroundColor);
+    } else {
+        // Solid color background
+        InflatableText.scene.background = new THREE.Color(InflatableText.settings.backgroundColor);
+    }
+}
+
+function createBackgroundSprite() {
+    const texture = InflatableText.settings.backgroundImage;
+    if (!texture) return;
+
+    const container = document.getElementById('chatooly-container');
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    const containerAspect = containerWidth / containerHeight;
+
+    // Get texture dimensions
+    const textureAspect = texture.image.width / texture.image.height;
+
+    let planeWidth, planeHeight;
+
+    if (InflatableText.settings.bgFillMode === 'fill') {
+        // Fill mode: cover entire view (may crop image)
+        if (containerAspect > textureAspect) {
+            // Container is wider than image
+            planeWidth = 100;
+            planeHeight = 100 / containerAspect;
+        } else {
+            // Container is taller than image
+            planeHeight = 100;
+            planeWidth = 100 * containerAspect;
+        }
+    } else {
+        // Fit mode: fit entire image (may show letterboxing)
+        if (containerAspect > textureAspect) {
+            // Container is wider than image
+            planeHeight = 100;
+            planeWidth = 100 * (textureAspect / containerAspect);
+        } else {
+            // Container is taller than image
+            planeWidth = 100;
+            planeHeight = 100 / (textureAspect * containerAspect);
+        }
+    }
+
+    const geometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
+    const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.DoubleSide,
+        depthTest: false,
+        depthWrite: false
+    });
+
+    const sprite = new THREE.Mesh(geometry, material);
+    sprite.position.z = -50; // Place behind all letters
+    sprite.renderOrder = -1; // Render first
+
+    InflatableText.settings.backgroundImageSprite = sprite;
+    InflatableText.scene.add(sprite);
+}
+
 // ========== REMOVED: Physics boundaries (no longer needed) ==========
 
 // ========== FONT LOADING ==========
@@ -180,154 +249,116 @@ function loadFont() {
         'fonts/Balloony_Regular.json',
         function(font) {
             InflatableText.font = font;
-            console.log('✅ Balloony Regular font loaded - Ready to create text!');
-
-            // Create initial text
-            createText(InflatableText.currentText);
+            console.log('✅ Balloony Regular font loaded - Start typing!');
 
             // Enable text input once font is loaded
             const textInput = document.getElementById('text-input');
             textInput.disabled = false;
-            textInput.placeholder = "Enter your text...";
+            textInput.placeholder = "Type letters...";
+            textInput.value = ""; // Clear initial value
+            textInput.focus(); // Auto-focus for typing
         },
         undefined,
         function(error) {
             console.error('❌ Error loading Balloony font:', error);
-            console.log('Trying Game Bubble fallback...');
-
-            // Fallback to Game Bubble if Balloony fails
-            loader.load(
-                'fonts/Game Bubble_Regular.json',
-                function(font) {
-                    InflatableText.font = font;
-                    console.log('✅ Game Bubble font loaded (fallback)');
-
-                    createText(InflatableText.currentText);
-
-                    const textInput = document.getElementById('text-input');
-                    textInput.disabled = false;
-                    textInput.placeholder = "Enter your text...";
-                },
-                undefined,
-                function(fallbackError) {
-                    console.error('❌ Fallback font also failed:', fallbackError);
-                    alert('Font loading failed. Please refresh the page.');
-                }
-            );
+            alert('Font loading failed. Please refresh the page.');
         }
     );
 }
 
-// ========== BALLOON MATERIAL CREATION (CUSTOM SHADER) ==========
+// ========== BALLOON MATERIAL CREATION ==========
 function createBalloonMaterial(hue) {
-    // Create realistic balloon material with custom shader for inflation
+    // Create realistic balloon material with standard Three.js material
     const color = new THREE.Color().setHSL(hue, 0.8, 0.6);
 
-    // Custom shader material with inflate uniform
-    const material = new THREE.ShaderMaterial({
-        uniforms: {
-            inflate: { value: 0.0 },
-            baseColor: { value: color },
-            lightPosition: { value: new THREE.Vector3(10, 20, 10) },
-            ambientIntensity: { value: 0.3 },
-            diffuseIntensity: { value: 0.7 },
-            specularIntensity: { value: 0.5 },
-            shininess: { value: 32.0 }
-        },
-        vertexShader: `
-            uniform float inflate;
-            varying vec3 vNormal;
-            varying vec3 vPosition;
-
-            void main() {
-                vNormal = normalize(normalMatrix * normal);
-
-                // Push vertices along their normals for inflation effect
-                vec3 inflatedPosition = position + normal * inflate;
-                vPosition = (modelViewMatrix * vec4(inflatedPosition, 1.0)).xyz;
-
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(inflatedPosition, 1.0);
-            }
-        `,
-        fragmentShader: `
-            uniform vec3 baseColor;
-            uniform vec3 lightPosition;
-            uniform float ambientIntensity;
-            uniform float diffuseIntensity;
-            uniform float specularIntensity;
-            uniform float shininess;
-
-            varying vec3 vNormal;
-            varying vec3 vPosition;
-
-            void main() {
-                // Normalize interpolated normal
-                vec3 normal = normalize(vNormal);
-
-                // Ambient lighting
-                vec3 ambient = baseColor * ambientIntensity;
-
-                // Diffuse lighting (Lambertian)
-                vec3 lightDir = normalize(lightPosition - vPosition);
-                float diff = max(dot(normal, lightDir), 0.0);
-                vec3 diffuse = baseColor * diff * diffuseIntensity;
-
-                // Specular lighting (Blinn-Phong for balloon shine)
-                vec3 viewDir = normalize(-vPosition);
-                vec3 halfDir = normalize(lightDir + viewDir);
-                float spec = pow(max(dot(normal, halfDir), 0.0), shininess);
-                vec3 specular = vec3(1.0) * spec * specularIntensity;
-
-                // Rim lighting for balloon edge glow
-                float rimPower = 1.0 - max(0.0, dot(viewDir, normal));
-                vec3 rim = baseColor * pow(rimPower, 3.0) * 0.5;
-
-                // Combine all lighting components
-                vec3 finalColor = ambient + diffuse + specular + rim;
-
-                gl_FragColor = vec4(finalColor, 0.9);
-            }
-        `,
+    const material = new THREE.MeshPhysicalMaterial({
+        color: color,
+        metalness: 0.1,
+        roughness: 0.2,
+        transmission: 0.3,
+        thickness: 0.5,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1,
+        reflectivity: 0.9,
+        ior: 1.4,
         transparent: true,
-        side: THREE.DoubleSide
+        opacity: 0.9,
+        side: THREE.DoubleSide,
+        envMap: InflatableText.settings.useEnvMap ? InflatableText.settings.environmentMap : null,
+        envMapIntensity: 1.0
     });
 
     return material;
 }
 
-// ========== CREATE/UPDATE TEXT MESH ==========
-function createText(text) {
+// ========== CREATE INDIVIDUAL LETTER MESH ==========
+function createLetterMesh(char) {
     if (!InflatableText.font) {
-        console.warn('⚠️ Font not loaded yet - please wait for font to load');
-        return;
+        console.warn('⚠️ Font not loaded yet');
+        return null;
     }
 
-    // Remove existing text mesh if present
-    if (InflatableText.textMesh) {
-        InflatableText.scene.remove(InflatableText.textMesh);
-        InflatableText.textMesh.geometry.dispose();
-        if (InflatableText.textMaterial) {
-            // Don't dispose material, we'll reuse it
+    // Create letter object to track animation state
+    const letterObj = {
+        char: char,
+        mesh: null,
+
+        // Inflation animation (ONLY thing that animates during spawn)
+        currentBevelThickness: 0,
+        currentBevelSize: 0,
+        inflation: 0, // 0 to 1
+        isInflating: true,
+
+        // Floating animation (starts after inflation)
+        floatOffset: Math.random() * Math.PI * 2, // Random phase
+        floatTime: 0,
+        position: {
+            x: InflatableText.nextLetterX,
+            y: 0,
+            z: 0
         }
-    }
+    };
 
-    // Create text geometry with current settings
-    const textGeometry = new THREE.TextGeometry(text, {
+    // Create initial geometry with 0 bevel (flat)
+    const geometry = createLetterGeometry(char, 0, 0);
+
+    // Create material with random hue
+    const hue = Math.random();
+    const material = createBalloonMaterial(hue);
+
+    // Create mesh
+    letterObj.mesh = new THREE.Mesh(geometry, material);
+    letterObj.mesh.position.set(letterObj.position.x, letterObj.position.y, letterObj.position.z);
+    letterObj.mesh.castShadow = true;
+    letterObj.mesh.receiveShadow = true;
+
+    // Add to scene
+    InflatableText.scene.add(letterObj.mesh);
+
+    // Move next letter position to the right
+    InflatableText.nextLetterX += InflatableText.settings.fontSize * 1.2;
+
+    console.log('✅ Letter created:', char);
+    return letterObj;
+}
+
+// ========== CREATE LETTER GEOMETRY ==========
+function createLetterGeometry(char, bevelThickness, bevelSize) {
+    const geometry = new THREE.TextGeometry(char, {
         font: InflatableText.font,
         size: InflatableText.settings.fontSize,
         height: InflatableText.settings.fontSize * InflatableText.settings.extrudeDepth,
         curveSegments: InflatableText.settings.curveSegments,
         bevelEnabled: true,
-        bevelThickness: InflatableText.settings.fontSize * InflatableText.settings.bevelThickness,
-        bevelSize: InflatableText.settings.fontSize * InflatableText.settings.bevelSize,
+        bevelThickness: InflatableText.settings.fontSize * bevelThickness,
+        bevelSize: InflatableText.settings.fontSize * bevelSize,
         bevelSegments: InflatableText.settings.bevelSegments
     });
 
-    // Compute geometry
-    textGeometry.computeBoundingBox();
+    geometry.computeBoundingBox();
 
     // Fix inverted normals
-    const index = textGeometry.index;
+    const index = geometry.index;
     if (index) {
         const indices = index.array;
         for (let i = 0; i < indices.length; i += 3) {
@@ -338,45 +369,55 @@ function createText(text) {
         index.needsUpdate = true;
     }
 
-    textGeometry.computeVertexNormals();
-    textGeometry.center();
+    geometry.computeVertexNormals();
+    geometry.center();
 
-    // Create or reuse material
-    if (!InflatableText.textMaterial) {
-        const hue = Math.random();
-        InflatableText.textMaterial = createBalloonMaterial(hue);
-    }
-
-    // Create mesh
-    InflatableText.textMesh = new THREE.Mesh(textGeometry, InflatableText.textMaterial);
-    InflatableText.textMesh.position.set(0, 0, 0);
-    InflatableText.textMesh.castShadow = true;
-    InflatableText.textMesh.receiveShadow = true;
-
-    // Add to scene
-    InflatableText.scene.add(InflatableText.textMesh);
-
-    // Reset inflation animation
-    InflatableText.inflation = 0;
-
-    console.log('✅ Text created:', text);
+    return geometry;
 }
 
-// ========== UPDATE TEXT INFLATION ==========
-function updateInflation(deltaTime) {
-    // Animate inflation
-    if (InflatableText.inflation < InflatableText.targetInflation) {
-        InflatableText.inflation += deltaTime * InflatableText.settings.inflationSpeed;
-        InflatableText.inflation = Math.min(InflatableText.inflation, InflatableText.targetInflation);
+// ========== UPDATE ALL LETTERS ==========
+function updateLetters(deltaTime) {
+    InflatableText.letterMeshes.forEach(letterObj => {
+        // INFLATION ANIMATION (plays once on spawn)
+        if (letterObj.isInflating) {
+            letterObj.inflation += deltaTime * InflatableText.settings.inflationSpeed;
 
-        // Apply easing (ease-out) for smooth inflation
-        const easedInflation = 1 - Math.pow(1 - InflatableText.inflation, 3);
+            if (letterObj.inflation >= 1.0) {
+                letterObj.inflation = 1.0;
+                letterObj.isInflating = false; // Stop inflating
+            }
 
-        // Update shader uniform
-        if (InflatableText.textMaterial && InflatableText.textMaterial.uniforms) {
-            InflatableText.textMaterial.uniforms.inflate.value = easedInflation * InflatableText.settings.inflationAmount;
+            // Ease-out cubic
+            const easedInflation = 1 - Math.pow(1 - letterObj.inflation, 3);
+
+            // Animate bevel from 0 to target values
+            letterObj.currentBevelThickness = easedInflation * InflatableText.settings.targetBevelThickness;
+            letterObj.currentBevelSize = easedInflation * InflatableText.settings.targetBevelSize;
+
+            // Rebuild geometry
+            const oldGeometry = letterObj.mesh.geometry;
+            letterObj.mesh.geometry = createLetterGeometry(
+                letterObj.char,
+                letterObj.currentBevelThickness,
+                letterObj.currentBevelSize
+            );
+            oldGeometry.dispose();
         }
-    }
+
+        // FLOATING ANIMATION (starts after inflation)
+        if (!letterObj.isInflating) {
+            letterObj.floatTime += deltaTime * InflatableText.settings.floatSpeed;
+
+            // Gentle up/down float
+            const floatY = Math.sin(letterObj.floatTime + letterObj.floatOffset) * InflatableText.settings.floatAmount;
+
+            // Gentle left/right drift
+            const floatX = Math.cos(letterObj.floatTime * 0.5 + letterObj.floatOffset) * InflatableText.settings.floatAmount * 0.5;
+
+            letterObj.mesh.position.y = letterObj.position.y + floatY;
+            letterObj.mesh.position.x = letterObj.position.x + floatX;
+        }
+    });
 }
 
 // ========== ANIMATION LOOP ==========
@@ -394,8 +435,8 @@ function animate() {
         InflatableText.controls.update();
     }
 
-    // Update inflation animation
-    updateInflation(deltaTime);
+    // Update all letter animations
+    updateLetters(deltaTime);
 
     // Render scene
     InflatableText.renderer.render(InflatableText.scene, InflatableText.camera);
@@ -403,65 +444,144 @@ function animate() {
 
 // ========== UI CONTROLS ==========
 function setupControls() {
-    // Text input - updates on Enter or blur
+    // Text input - creates new letter on each keystroke
     const textInput = document.getElementById('text-input');
 
-    const updateText = () => {
-        const text = textInput.value.trim().toUpperCase();
-        if (text && text !== InflatableText.currentText) {
-            InflatableText.currentText = text;
-            createText(text);
-        }
-    };
+    textInput.addEventListener('input', (e) => {
+        const newText = e.target.value.toUpperCase();
+        const currentLength = InflatableText.letterMeshes.length;
 
-    textInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            updateText();
+        // If text is longer, add new letters
+        if (newText.length > currentLength) {
+            for (let i = currentLength; i < newText.length; i++) {
+                const char = newText[i];
+                if (char.trim()) { // Only create mesh for non-whitespace
+                    const letterObj = createLetterMesh(char);
+                    if (letterObj) {
+                        InflatableText.letterMeshes.push(letterObj);
+                    }
+                }
+            }
+        }
+        // If text is shorter, remove letters from end
+        else if (newText.length < currentLength) {
+            const removeCount = currentLength - newText.length;
+            for (let i = 0; i < removeCount; i++) {
+                const letterObj = InflatableText.letterMeshes.pop();
+                if (letterObj && letterObj.mesh) {
+                    InflatableText.scene.remove(letterObj.mesh);
+                    letterObj.mesh.geometry.dispose();
+                    letterObj.mesh.material.dispose();
+                }
+            }
+            // Adjust next position
+            if (InflatableText.letterMeshes.length > 0) {
+                const lastLetter = InflatableText.letterMeshes[InflatableText.letterMeshes.length - 1];
+                InflatableText.nextLetterX = lastLetter.position.x + InflatableText.settings.fontSize * 1.2;
+            } else {
+                InflatableText.nextLetterX = -20;
+            }
         }
     });
-
-    textInput.addEventListener('blur', updateText);
 
     // Background color
     const bgColor = document.getElementById('bg-color');
     bgColor.addEventListener('input', (e) => {
         InflatableText.settings.backgroundColor = e.target.value;
-        InflatableText.scene.background = new THREE.Color(e.target.value);
+        updateSceneBackground();
     });
 
-    // Font size - rebuilds text geometry
-    const fontSize = document.getElementById('font-size');
-    const fontSizeInput = document.getElementById('font-size-input');
-    fontSize.addEventListener('input', (e) => {
-        InflatableText.settings.fontSize = parseFloat(e.target.value);
-        fontSizeInput.value = e.target.value;
-        createText(InflatableText.currentText);
-    });
-    fontSizeInput.addEventListener('input', (e) => {
-        InflatableText.settings.fontSize = parseFloat(e.target.value);
-        fontSize.value = e.target.value;
-        createText(InflatableText.currentText);
+    // Background image upload
+    const bgImage = document.getElementById('bg-image');
+    const bgImageOptions = document.getElementById('bg-image-options');
+
+    bgImage.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const loader = new THREE.TextureLoader();
+                loader.load(event.target.result, (texture) => {
+                    InflatableText.settings.backgroundImage = texture;
+
+                    // Show background image options
+                    bgImageOptions.style.display = 'block';
+
+                    // Create environment map from the same texture if enabled
+                    if (InflatableText.settings.useEnvMap) {
+                        const pmremGenerator = new THREE.PMREMGenerator(InflatableText.renderer);
+                        pmremGenerator.compileEquirectangularShader();
+                        InflatableText.settings.environmentMap = pmremGenerator.fromEquirectangular(texture).texture;
+                        pmremGenerator.dispose();
+                        updateAllMaterialsEnvMap();
+                    }
+
+                    updateSceneBackground();
+                });
+            };
+            reader.readAsDataURL(file);
+        }
     });
 
-    // Inflation amount - updates shader immediately
-    const inflationAmount = document.getElementById('inflation-amount');
-    const inflationAmountInput = document.getElementById('inflation-amount-input');
-    inflationAmount.addEventListener('input', (e) => {
-        InflatableText.settings.inflationAmount = parseFloat(e.target.value);
-        inflationAmountInput.value = e.target.value;
-        // Update shader immediately if fully inflated
-        if (InflatableText.textMaterial && InflatableText.inflation >= InflatableText.targetInflation) {
-            InflatableText.textMaterial.uniforms.inflate.value = InflatableText.settings.inflationAmount;
-        }
+    // Background fill mode
+    const bgFillMode = document.getElementById('bg-fill-mode');
+    bgFillMode.addEventListener('change', (e) => {
+        InflatableText.settings.bgFillMode = e.target.value;
+        updateSceneBackground();
     });
-    inflationAmountInput.addEventListener('input', (e) => {
-        InflatableText.settings.inflationAmount = parseFloat(e.target.value);
-        inflationAmount.value = e.target.value;
-        // Update shader immediately if fully inflated
-        if (InflatableText.textMaterial && InflatableText.inflation >= InflatableText.targetInflation) {
-            InflatableText.textMaterial.uniforms.inflate.value = InflatableText.settings.inflationAmount;
-        }
+
+    // Clear background image
+    const clearBgBtn = document.getElementById('clear-bg-btn');
+    if (clearBgBtn) {
+        clearBgBtn.addEventListener('click', () => {
+            InflatableText.settings.backgroundImage = null;
+            InflatableText.settings.environmentMap = null;
+            bgImage.value = ''; // Reset file input
+            bgImageOptions.style.display = 'none'; // Hide options
+            updateSceneBackground();
+            updateAllMaterialsEnvMap();
+        });
+    }
+
+    // Transparent background toggle
+    const transparentBg = document.getElementById('transparent-bg');
+    transparentBg.addEventListener('change', (e) => {
+        InflatableText.settings.transparentBg = e.target.checked;
+        updateSceneBackground();
     });
+
+    // Use background as environment map toggle
+    const useEnvMap = document.getElementById('use-env-map');
+    useEnvMap.addEventListener('change', (e) => {
+        InflatableText.settings.useEnvMap = e.target.checked;
+
+        if (e.target.checked && InflatableText.settings.backgroundImage) {
+            // Create environment map from existing background image
+            const pmremGenerator = new THREE.PMREMGenerator(InflatableText.renderer);
+            pmremGenerator.compileEquirectangularShader();
+            InflatableText.settings.environmentMap = pmremGenerator.fromEquirectangular(InflatableText.settings.backgroundImage).texture;
+            pmremGenerator.dispose();
+        } else {
+            // Clear environment map
+            InflatableText.settings.environmentMap = null;
+        }
+
+        updateAllMaterialsEnvMap();
+    });
+
+    // Replay button - restart all animations
+    const replayBtn = document.getElementById('replay-btn');
+    if (replayBtn) {
+        replayBtn.addEventListener('click', () => {
+            InflatableText.letterMeshes.forEach(letterObj => {
+                letterObj.inflation = 0;
+                letterObj.currentBevelThickness = 0;
+                letterObj.currentBevelSize = 0;
+                letterObj.isInflating = true;
+                letterObj.floatTime = 0;
+            });
+        });
+    }
 
     // Inflation speed
     const inflationSpeed = document.getElementById('inflation-speed');
@@ -475,370 +595,51 @@ function setupControls() {
         inflationSpeed.value = e.target.value;
     });
 
-    // REMOVED: Spawn delay, gravity, bounciness (no longer using physics)
 
-    // Material controls
-    const metalness = document.getElementById('metalness');
-    const metalnessInput = document.getElementById('metalness-input');
-    metalness.addEventListener('input', (e) => {
-        InflatableText.settings.metalness = parseFloat(e.target.value);
-        metalnessInput.value = e.target.value;
-        updateAllMaterials();
-    });
-    metalnessInput.addEventListener('input', (e) => {
-        InflatableText.settings.metalness = parseFloat(e.target.value);
-        metalness.value = e.target.value;
-        updateAllMaterials();
-    });
+    // Clear button - removes all letters
+    const clearBtn = document.getElementById('clear-btn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            // Remove all meshes
+            InflatableText.letterMeshes.forEach(letterObj => {
+                if (letterObj.mesh) {
+                    InflatableText.scene.remove(letterObj.mesh);
+                    letterObj.mesh.geometry.dispose();
+                    letterObj.mesh.material.dispose();
+                }
+            });
+            InflatableText.letterMeshes = [];
+            InflatableText.nextLetterX = -20;
+            textInput.value = "";
+        });
+    }
+}
 
-    const roughness = document.getElementById('roughness');
-    const roughnessInput = document.getElementById('roughness-input');
-    roughness.addEventListener('input', (e) => {
-        InflatableText.settings.roughness = parseFloat(e.target.value);
-        roughnessInput.value = e.target.value;
-        updateAllMaterials();
-    });
-    roughnessInput.addEventListener('input', (e) => {
-        InflatableText.settings.roughness = parseFloat(e.target.value);
-        roughness.value = e.target.value;
-        updateAllMaterials();
-    });
-
-    const transmission = document.getElementById('transmission');
-    const transmissionInput = document.getElementById('transmission-input');
-    transmission.addEventListener('input', (e) => {
-        InflatableText.settings.transmission = parseFloat(e.target.value);
-        transmissionInput.value = e.target.value;
-        updateAllMaterials();
-    });
-    transmissionInput.addEventListener('input', (e) => {
-        InflatableText.settings.transmission = parseFloat(e.target.value);
-        transmission.value = e.target.value;
-        updateAllMaterials();
-    });
-
-    const clearcoat = document.getElementById('clearcoat');
-    const clearcoatInput = document.getElementById('clearcoat-input');
-    clearcoat.addEventListener('input', (e) => {
-        InflatableText.settings.clearcoat = parseFloat(e.target.value);
-        clearcoatInput.value = e.target.value;
-        updateAllMaterials();
-    });
-    clearcoatInput.addEventListener('input', (e) => {
-        InflatableText.settings.clearcoat = parseFloat(e.target.value);
-        clearcoat.value = e.target.value;
-        updateAllMaterials();
-    });
-
-    const clearcoatRoughness = document.getElementById('clearcoat-roughness');
-    const clearcoatRoughnessInput = document.getElementById('clearcoat-roughness-input');
-    clearcoatRoughness.addEventListener('input', (e) => {
-        InflatableText.settings.clearcoatRoughness = parseFloat(e.target.value);
-        clearcoatRoughnessInput.value = e.target.value;
-        updateAllMaterials();
-    });
-    clearcoatRoughnessInput.addEventListener('input', (e) => {
-        InflatableText.settings.clearcoatRoughness = parseFloat(e.target.value);
-        clearcoatRoughness.value = e.target.value;
-        updateAllMaterials();
-    });
-
-    const opacity = document.getElementById('opacity');
-    const opacityInput = document.getElementById('opacity-input');
-    opacity.addEventListener('input', (e) => {
-        InflatableText.settings.opacity = parseFloat(e.target.value);
-        opacityInput.value = e.target.value;
-        updateAllMaterials();
-    });
-    opacityInput.addEventListener('input', (e) => {
-        InflatableText.settings.opacity = parseFloat(e.target.value);
-        opacity.value = e.target.value;
-        updateAllMaterials();
-    });
-
-    // Lighting controls
-    const ambientLight = document.getElementById('ambient-light');
-    const ambientLightInput = document.getElementById('ambient-light-input');
-    ambientLight.addEventListener('input', (e) => {
-        InflatableText.settings.ambientIntensity = parseFloat(e.target.value);
-        ambientLightInput.value = e.target.value;
-        if (InflatableText.lights.ambient) {
-            InflatableText.lights.ambient.intensity = InflatableText.settings.ambientIntensity;
+// ========== UPDATE MATERIAL PROPERTIES ==========
+function updateAllMaterials() {
+    InflatableText.letterMeshes.forEach(letterObj => {
+        if (letterObj.mesh && letterObj.mesh.material) {
+            letterObj.mesh.material.metalness = InflatableText.settings.metalness;
+            letterObj.mesh.material.roughness = InflatableText.settings.roughness;
+            letterObj.mesh.material.transmission = InflatableText.settings.transmission;
+            letterObj.mesh.material.clearcoat = InflatableText.settings.clearcoat;
+            letterObj.mesh.material.clearcoatRoughness = InflatableText.settings.clearcoatRoughness;
+            letterObj.mesh.material.opacity = InflatableText.settings.opacity;
+            letterObj.mesh.material.needsUpdate = true;
         }
-    });
-    ambientLightInput.addEventListener('input', (e) => {
-        InflatableText.settings.ambientIntensity = parseFloat(e.target.value);
-        ambientLight.value = e.target.value;
-        if (InflatableText.lights.ambient) {
-            InflatableText.lights.ambient.intensity = InflatableText.settings.ambientIntensity;
-        }
-    });
-
-    const mainLight = document.getElementById('main-light');
-    const mainLightInput = document.getElementById('main-light-input');
-    mainLight.addEventListener('input', (e) => {
-        InflatableText.settings.mainLightIntensity = parseFloat(e.target.value);
-        mainLightInput.value = e.target.value;
-        if (InflatableText.lights.main) {
-            InflatableText.lights.main.intensity = InflatableText.settings.mainLightIntensity;
-        }
-    });
-    mainLightInput.addEventListener('input', (e) => {
-        InflatableText.settings.mainLightIntensity = parseFloat(e.target.value);
-        mainLight.value = e.target.value;
-        if (InflatableText.lights.main) {
-            InflatableText.lights.main.intensity = InflatableText.settings.mainLightIntensity;
-        }
-    });
-
-    const fillLight = document.getElementById('fill-light');
-    const fillLightInput = document.getElementById('fill-light-input');
-    fillLight.addEventListener('input', (e) => {
-        InflatableText.settings.fillLightIntensity = parseFloat(e.target.value);
-        fillLightInput.value = e.target.value;
-        if (InflatableText.lights.fill) {
-            InflatableText.lights.fill.intensity = InflatableText.settings.fillLightIntensity;
-        }
-    });
-    fillLightInput.addEventListener('input', (e) => {
-        InflatableText.settings.fillLightIntensity = parseFloat(e.target.value);
-        fillLight.value = e.target.value;
-        if (InflatableText.lights.fill) {
-            InflatableText.lights.fill.intensity = InflatableText.settings.fillLightIntensity;
-        }
-    });
-
-    const rimLight = document.getElementById('rim-light');
-    const rimLightInput = document.getElementById('rim-light-input');
-    rimLight.addEventListener('input', (e) => {
-        InflatableText.settings.rimLightIntensity = parseFloat(e.target.value);
-        rimLightInput.value = e.target.value;
-        if (InflatableText.lights.rim) {
-            InflatableText.lights.rim.intensity = InflatableText.settings.rimLightIntensity;
-        }
-    });
-    rimLightInput.addEventListener('input', (e) => {
-        InflatableText.settings.rimLightIntensity = parseFloat(e.target.value);
-        rimLight.value = e.target.value;
-        if (InflatableText.lights.rim) {
-            InflatableText.lights.rim.intensity = InflatableText.settings.rimLightIntensity;
-        }
-    });
-
-    // Main Light Position
-    const mainLightX = document.getElementById('main-light-x');
-    const mainLightXInput = document.getElementById('main-light-x-input');
-    mainLightX.addEventListener('input', (e) => {
-        mainLightXInput.value = e.target.value;
-        if (InflatableText.lights.main) {
-            InflatableText.lights.main.position.x = parseFloat(e.target.value);
-        }
-    });
-    mainLightXInput.addEventListener('input', (e) => {
-        mainLightX.value = e.target.value;
-        if (InflatableText.lights.main) {
-            InflatableText.lights.main.position.x = parseFloat(e.target.value);
-        }
-    });
-
-    const mainLightY = document.getElementById('main-light-y');
-    const mainLightYInput = document.getElementById('main-light-y-input');
-    mainLightY.addEventListener('input', (e) => {
-        mainLightYInput.value = e.target.value;
-        if (InflatableText.lights.main) {
-            InflatableText.lights.main.position.y = parseFloat(e.target.value);
-        }
-    });
-    mainLightYInput.addEventListener('input', (e) => {
-        mainLightY.value = e.target.value;
-        if (InflatableText.lights.main) {
-            InflatableText.lights.main.position.y = parseFloat(e.target.value);
-        }
-    });
-
-    const mainLightZ = document.getElementById('main-light-z');
-    const mainLightZInput = document.getElementById('main-light-z-input');
-    mainLightZ.addEventListener('input', (e) => {
-        mainLightZInput.value = e.target.value;
-        if (InflatableText.lights.main) {
-            InflatableText.lights.main.position.z = parseFloat(e.target.value);
-        }
-    });
-    mainLightZInput.addEventListener('input', (e) => {
-        mainLightZ.value = e.target.value;
-        if (InflatableText.lights.main) {
-            InflatableText.lights.main.position.z = parseFloat(e.target.value);
-        }
-    });
-
-    // Fill Light Position
-    const fillLightX = document.getElementById('fill-light-x');
-    const fillLightXInput = document.getElementById('fill-light-x-input');
-    fillLightX.addEventListener('input', (e) => {
-        fillLightXInput.value = e.target.value;
-        if (InflatableText.lights.fill) {
-            InflatableText.lights.fill.position.x = parseFloat(e.target.value);
-        }
-    });
-    fillLightXInput.addEventListener('input', (e) => {
-        fillLightX.value = e.target.value;
-        if (InflatableText.lights.fill) {
-            InflatableText.lights.fill.position.x = parseFloat(e.target.value);
-        }
-    });
-
-    const fillLightY = document.getElementById('fill-light-y');
-    const fillLightYInput = document.getElementById('fill-light-y-input');
-    fillLightY.addEventListener('input', (e) => {
-        fillLightYInput.value = e.target.value;
-        if (InflatableText.lights.fill) {
-            InflatableText.lights.fill.position.y = parseFloat(e.target.value);
-        }
-    });
-    fillLightYInput.addEventListener('input', (e) => {
-        fillLightY.value = e.target.value;
-        if (InflatableText.lights.fill) {
-            InflatableText.lights.fill.position.y = parseFloat(e.target.value);
-        }
-    });
-
-    const fillLightZ = document.getElementById('fill-light-z');
-    const fillLightZInput = document.getElementById('fill-light-z-input');
-    fillLightZ.addEventListener('input', (e) => {
-        fillLightZInput.value = e.target.value;
-        if (InflatableText.lights.fill) {
-            InflatableText.lights.fill.position.z = parseFloat(e.target.value);
-        }
-    });
-    fillLightZInput.addEventListener('input', (e) => {
-        fillLightZ.value = e.target.value;
-        if (InflatableText.lights.fill) {
-            InflatableText.lights.fill.position.z = parseFloat(e.target.value);
-        }
-    });
-
-    // Rim Light Position
-    const rimLightX = document.getElementById('rim-light-x');
-    const rimLightXInput = document.getElementById('rim-light-x-input');
-    rimLightX.addEventListener('input', (e) => {
-        rimLightXInput.value = e.target.value;
-        if (InflatableText.lights.rim) {
-            InflatableText.lights.rim.position.x = parseFloat(e.target.value);
-        }
-    });
-    rimLightXInput.addEventListener('input', (e) => {
-        rimLightX.value = e.target.value;
-        if (InflatableText.lights.rim) {
-            InflatableText.lights.rim.position.x = parseFloat(e.target.value);
-        }
-    });
-
-    const rimLightY = document.getElementById('rim-light-y');
-    const rimLightYInput = document.getElementById('rim-light-y-input');
-    rimLightY.addEventListener('input', (e) => {
-        rimLightYInput.value = e.target.value;
-        if (InflatableText.lights.rim) {
-            InflatableText.lights.rim.position.y = parseFloat(e.target.value);
-        }
-    });
-    rimLightYInput.addEventListener('input', (e) => {
-        rimLightY.value = e.target.value;
-        if (InflatableText.lights.rim) {
-            InflatableText.lights.rim.position.y = parseFloat(e.target.value);
-        }
-    });
-
-    const rimLightZ = document.getElementById('rim-light-z');
-    const rimLightZInput = document.getElementById('rim-light-z-input');
-    rimLightZ.addEventListener('input', (e) => {
-        rimLightZInput.value = e.target.value;
-        if (InflatableText.lights.rim) {
-            InflatableText.lights.rim.position.z = parseFloat(e.target.value);
-        }
-    });
-    rimLightZInput.addEventListener('input', (e) => {
-        rimLightZ.value = e.target.value;
-        if (InflatableText.lights.rim) {
-            InflatableText.lights.rim.position.z = parseFloat(e.target.value);
-        }
-    });
-
-    // 3D Geometry Controls - all rebuild text in real-time
-    const extrudeDepth = document.getElementById('extrude-depth');
-    const extrudeDepthInput = document.getElementById('extrude-depth-input');
-    extrudeDepth.addEventListener('input', (e) => {
-        InflatableText.settings.extrudeDepth = parseFloat(e.target.value);
-        extrudeDepthInput.value = e.target.value;
-        createText(InflatableText.currentText);
-    });
-    extrudeDepthInput.addEventListener('input', (e) => {
-        InflatableText.settings.extrudeDepth = parseFloat(e.target.value);
-        extrudeDepth.value = e.target.value;
-        createText(InflatableText.currentText);
-    });
-
-    const curveSegments = document.getElementById('curve-segments');
-    const curveSegmentsInput = document.getElementById('curve-segments-input');
-    curveSegments.addEventListener('input', (e) => {
-        InflatableText.settings.curveSegments = parseInt(e.target.value);
-        curveSegmentsInput.value = e.target.value;
-        createText(InflatableText.currentText);
-    });
-    curveSegmentsInput.addEventListener('input', (e) => {
-        InflatableText.settings.curveSegments = parseInt(e.target.value);
-        curveSegments.value = e.target.value;
-        createText(InflatableText.currentText);
-    });
-
-    const bevelThickness = document.getElementById('bevel-thickness');
-    const bevelThicknessInput = document.getElementById('bevel-thickness-input');
-    bevelThickness.addEventListener('input', (e) => {
-        InflatableText.settings.bevelThickness = parseFloat(e.target.value);
-        bevelThicknessInput.value = e.target.value;
-        createText(InflatableText.currentText);
-    });
-    bevelThicknessInput.addEventListener('input', (e) => {
-        InflatableText.settings.bevelThickness = parseFloat(e.target.value);
-        bevelThickness.value = e.target.value;
-        createText(InflatableText.currentText);
-    });
-
-    const bevelSize = document.getElementById('bevel-size');
-    const bevelSizeInput = document.getElementById('bevel-size-input');
-    bevelSize.addEventListener('input', (e) => {
-        InflatableText.settings.bevelSize = parseFloat(e.target.value);
-        bevelSizeInput.value = e.target.value;
-        createText(InflatableText.currentText);
-    });
-    bevelSizeInput.addEventListener('input', (e) => {
-        InflatableText.settings.bevelSize = parseFloat(e.target.value);
-        bevelSize.value = e.target.value;
-        createText(InflatableText.currentText);
-    });
-
-    const bevelSegments = document.getElementById('bevel-segments');
-    const bevelSegmentsInput = document.getElementById('bevel-segments-input');
-    bevelSegments.addEventListener('input', (e) => {
-        InflatableText.settings.bevelSegments = parseInt(e.target.value);
-        bevelSegmentsInput.value = e.target.value;
-        createText(InflatableText.currentText);
-    });
-    bevelSegmentsInput.addEventListener('input', (e) => {
-        InflatableText.settings.bevelSegments = parseInt(e.target.value);
-        bevelSegments.value = e.target.value;
-        createText(InflatableText.currentText);
-    });
-
-    // Reset button - resets text to default
-    const resetBtn = document.getElementById('reset-btn');
-    resetBtn.addEventListener('click', () => {
-        InflatableText.currentText = "HELLO";
-        createText(InflatableText.currentText);
-        textInput.value = InflatableText.currentText;
     });
 }
 
-// ========== REMOVED: updateAllMaterials and updateAllInflation (no longer using letter arrays) ==========
+// ========== UPDATE ENVIRONMENT MAP ON ALL MATERIALS ==========
+function updateAllMaterialsEnvMap() {
+    InflatableText.letterMeshes.forEach(letterObj => {
+        if (letterObj.mesh && letterObj.mesh.material) {
+            letterObj.mesh.material.envMap = InflatableText.settings.useEnvMap ? InflatableText.settings.environmentMap : null;
+            letterObj.mesh.material.needsUpdate = true;
+        }
+    });
+}
+
 
 // ========== HIGH-RES EXPORT (REQUIRED FOR CHATOOLY) ==========
 window.renderHighResolution = function(targetCanvas, scale) {
@@ -866,6 +667,12 @@ window.renderHighResolution = function(targetCanvas, scale) {
     const ctx = targetCanvas.getContext('2d');
     targetCanvas.width = newWidth;
     targetCanvas.height = newHeight;
+
+    // Clear canvas with transparency if transparent background is enabled
+    if (InflatableText.settings.transparentBg) {
+        ctx.clearRect(0, 0, newWidth, newHeight);
+    }
+
     ctx.drawImage(InflatableText.renderer.domElement, 0, 0);
 
     // Restore original size

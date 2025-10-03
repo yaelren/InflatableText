@@ -79,213 +79,78 @@
             <div class="chatooly-controls-content">
                 <!-- ========== EDIT BELOW: Add Your Tool Controls Here ========== -->
 
-                <!-- Text Settings Category -->
-                <details class="chatooly-category" open>
-                    <summary>Text Settings</summary>
-                    <div class="chatooly-category-content">
-                        <div class="chatooly-control-group">
-                            <label for="text-input">Enter Text</label>
-                            <input type="text" id="text-input" placeholder="Loading font..." maxlength="20" disabled>
-                        </div>
+                <!-- Text Input -->
+                <div class="chatooly-control-group">
+                    <label for="text-input">Type Letters</label>
+                    <input type="text" id="text-input" placeholder="Loading font..." maxlength="50" disabled>
+                </div>
 
-                        <div class="chatooly-control-group">
-                            <label for="font-size">Font Size</label>
-                            <input type="range" id="font-size" min="0.1" max="20" step="0.1" value="12">
-                            <input type="number" id="font-size-input" min="0.1" max="20" step="0.1" value="12">
-                        </div>
+                <!-- Action Buttons -->
+                <div class="chatooly-control-group">
+                    <button id="replay-btn" class="chatooly-button">Replay Animation</button>
+                </div>
 
-                        <div class="chatooly-control-group">
-                            <label for="bg-color">Background Color</label>
-                            <input type="color" id="bg-color" value="#000000">
-                        </div>
-                    </div>
-                </details>
+                <div class="chatooly-control-group">
+                    <button id="clear-btn" class="chatooly-button">Clear All</button>
+                </div>
 
                 <!-- Animation Settings Category -->
                 <details class="chatooly-category" open>
                     <summary>Animation</summary>
                     <div class="chatooly-category-content">
                         <div class="chatooly-control-group">
-                            <label for="inflation-amount">Max Inflation</label>
-                            <input type="range" id="inflation-amount" min="0" max="2" step="0.05" value="0.5">
-                            <input type="number" id="inflation-amount-input" min="0" max="2" step="0.05" value="0.5">
-                        </div>
-
-                        <div class="chatooly-control-group">
                             <label for="inflation-speed">Inflation Speed</label>
-                            <input type="range" id="inflation-speed" min="0.001" max="10" step="0.001" value="0.01">
-                            <input type="number" id="inflation-speed-input" min="0.001" max="10" step="0.001" value="0.01">
+                            <input type="range" id="inflation-speed" min="0.5" max="5" step="0.1" value="1.0">
+                            <input type="number" id="inflation-speed-input" min="0.5" max="5" step="0.1" value="1.0">
                         </div>
-
                     </div>
                 </details>
 
-                <!-- 3D Geometry Settings Category -->
+                <!-- Background -->
                 <details class="chatooly-category">
-                    <summary>3D Geometry</summary>
+                    <summary>Background</summary>
                     <div class="chatooly-category-content">
                         <div class="chatooly-control-group">
-                            <label for="extrude-depth">Extrusion Depth</label>
-                            <input type="range" id="extrude-depth" min="0.1" max="3" step="0.1" value="0.2">
-                            <input type="number" id="extrude-depth-input" min="0.1" max="3" step="0.1" value="0.2">
+                            <label for="bg-color">Background Color</label>
+                            <input type="color" id="bg-color" value="#000000">
                         </div>
 
                         <div class="chatooly-control-group">
-                            <label for="curve-segments">Curve Smoothness</label>
-                            <input type="range" id="curve-segments" min="4" max="64" step="1" value="32">
-                            <input type="number" id="curve-segments-input" min="4" max="64" step="1" value="32">
+                            <label>
+                                <input type="checkbox" id="transparent-bg">
+                                Transparent Background
+                            </label>
                         </div>
 
                         <div class="chatooly-control-group">
-                            <label for="bevel-thickness">Bevel Thickness</label>
-                            <input type="range" id="bevel-thickness" min="0" max="1" step="0.01" value="0.4">
-                            <input type="number" id="bevel-thickness-input" min="0" max="1" step="0.01" value="0.4">
+                            <label for="bg-image">Background Image</label>
+                            <input type="file" id="bg-image" accept="image/*">
                         </div>
 
-                        <div class="chatooly-control-group">
-                            <label for="bevel-size">Bevel Size</label>
-                            <input type="range" id="bevel-size" min="0" max="1" step="0.01" value="0.3">
-                            <input type="number" id="bevel-size-input" min="0" max="1" step="0.01" value="0.3">
-                        </div>
+                        <!-- Background Image Options (shown only when image is uploaded) -->
+                        <div id="bg-image-options" style="display: none;">
+                            <div class="chatooly-control-group">
+                                <label for="bg-fill-mode">Background Fill Mode</label>
+                                <select id="bg-fill-mode">
+                                    <option value="fill">Fill (may crop)</option>
+                                    <option value="fit">Fit (no stretch)</option>
+                                </select>
+                            </div>
 
-                        <div class="chatooly-control-group">
-                            <label for="bevel-segments">Bevel Smoothness</label>
-                            <input type="range" id="bevel-segments" min="1" max="32" step="1" value="16">
-                            <input type="number" id="bevel-segments-input" min="1" max="32" step="1" value="16">
+                            <div class="chatooly-control-group">
+                                <label>
+                                    <input type="checkbox" id="use-env-map">
+                                    Use Background as Environment Map
+                                </label>
+                            </div>
+
+                            <div class="chatooly-control-group">
+                                <button id="clear-bg-btn" class="chatooly-button">Clear Background Image</button>
+                            </div>
                         </div>
                     </div>
                 </details>
 
-                <!-- Material Properties Category -->
-                <details class="chatooly-category">
-                    <summary>Material</summary>
-                    <div class="chatooly-category-content">
-                        <div class="chatooly-control-group">
-                            <label for="metalness">Metalness</label>
-                            <input type="range" id="metalness" min="0" max="1" step="0.01" value="0.1">
-                            <input type="number" id="metalness-input" min="0" max="1" step="0.01" value="0.1">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="roughness">Roughness</label>
-                            <input type="range" id="roughness" min="0" max="1" step="0.01" value="0.2">
-                            <input type="number" id="roughness-input" min="0" max="1" step="0.01" value="0.2">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="transmission">Transmission</label>
-                            <input type="range" id="transmission" min="0" max="1" step="0.01" value="0.3">
-                            <input type="number" id="transmission-input" min="0" max="1" step="0.01" value="0.3">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="clearcoat">Clearcoat</label>
-                            <input type="range" id="clearcoat" min="0" max="1" step="0.01" value="1.0">
-                            <input type="number" id="clearcoat-input" min="0" max="1" step="0.01" value="1.0">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="clearcoat-roughness">Clearcoat Roughness</label>
-                            <input type="range" id="clearcoat-roughness" min="0" max="1" step="0.01" value="0.1">
-                            <input type="number" id="clearcoat-roughness-input" min="0" max="1" step="0.01" value="0.1">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="opacity">Opacity</label>
-                            <input type="range" id="opacity" min="0" max="1" step="0.01" value="0.9">
-                            <input type="number" id="opacity-input" min="0" max="1" step="0.01" value="0.9">
-                        </div>
-                    </div>
-                </details>
-
-                <!-- Lighting Controls Category -->
-                <details class="chatooly-category">
-                    <summary>Lighting</summary>
-                    <div class="chatooly-category-content">
-                        <div class="chatooly-control-group">
-                            <label for="ambient-light">Ambient Light</label>
-                            <input type="range" id="ambient-light" min="0" max="2" step="0.1" value="0.4">
-                            <input type="number" id="ambient-light-input" min="0" max="2" step="0.1" value="0.4">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="main-light">Main Light Intensity</label>
-                            <input type="range" id="main-light" min="0" max="2" step="0.1" value="0.8">
-                            <input type="number" id="main-light-input" min="0" max="2" step="0.1" value="0.8">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="main-light-x">Main Light X</label>
-                            <input type="range" id="main-light-x" min="-50" max="50" step="1" value="10">
-                            <input type="number" id="main-light-x-input" min="-50" max="50" step="1" value="10">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="main-light-y">Main Light Y</label>
-                            <input type="range" id="main-light-y" min="-50" max="50" step="1" value="20">
-                            <input type="number" id="main-light-y-input" min="-50" max="50" step="1" value="20">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="main-light-z">Main Light Z</label>
-                            <input type="range" id="main-light-z" min="-50" max="50" step="1" value="10">
-                            <input type="number" id="main-light-z-input" min="-50" max="50" step="1" value="10">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="fill-light">Fill Light Intensity</label>
-                            <input type="range" id="fill-light" min="0" max="2" step="0.1" value="0.3">
-                            <input type="number" id="fill-light-input" min="0" max="2" step="0.1" value="0.3">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="fill-light-x">Fill Light X</label>
-                            <input type="range" id="fill-light-x" min="-50" max="50" step="1" value="-10">
-                            <input type="number" id="fill-light-x-input" min="-50" max="50" step="1" value="-10">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="fill-light-y">Fill Light Y</label>
-                            <input type="range" id="fill-light-y" min="-50" max="50" step="1" value="5">
-                            <input type="number" id="fill-light-y-input" min="-50" max="50" step="1" value="5">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="fill-light-z">Fill Light Z</label>
-                            <input type="range" id="fill-light-z" min="-50" max="50" step="1" value="-5">
-                            <input type="number" id="fill-light-z-input" min="-50" max="50" step="1" value="-5">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="rim-light">Rim Light Intensity</label>
-                            <input type="range" id="rim-light" min="0" max="2" step="0.1" value="0.4">
-                            <input type="number" id="rim-light-input" min="0" max="2" step="0.1" value="0.4">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="rim-light-x">Rim Light X</label>
-                            <input type="range" id="rim-light-x" min="-50" max="50" step="1" value="0">
-                            <input type="number" id="rim-light-x-input" min="-50" max="50" step="1" value="0">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="rim-light-y">Rim Light Y</label>
-                            <input type="range" id="rim-light-y" min="-50" max="50" step="1" value="0">
-                            <input type="number" id="rim-light-y-input" min="-50" max="50" step="1" value="0">
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="rim-light-z">Rim Light Z</label>
-                            <input type="range" id="rim-light-z" min="-50" max="50" step="1" value="-10">
-                            <input type="number" id="rim-light-z-input" min="-50" max="50" step="1" value="-10">
-                        </div>
-                    </div>
-                </details>
-
-                <!-- Reset button -->
-                <div class="chatooly-control-group">
-                    <button id="reset-btn" class="chatooly-button">Reset to HELLO</button>
-                </div>
 
                 <!-- ========== END EDIT SECTION ========== -->
             </div>
