@@ -46,7 +46,13 @@ const InflatableText = {
         gravity: 0,
         boundaryPadding: 5, // Padding from canvas edges
         bounciness: 0.1, // 0 = no bounce, 1 = full bounce
-        colliderSize: 0.4 // Multiplier for collision radius (0.3 = small, 2 = large)
+        colliderSize: 0.4, // Multiplier for collision radius (0.3 = small, 2 = large)
+
+        // Color palette for letters
+        letterColors: ['#ff6b9d', '#c44569', '#4a69bd'],
+
+        // Debug options
+        showBoundingBox: true
     },
 
     // Store light references for runtime updates
@@ -204,6 +210,7 @@ function updateBoundingBoxDebug() {
 
     debugBoundingBox.scale.set(width, height, 1);
     debugBoundingBox.position.set(centerX, centerY, 0);
+    debugBoundingBox.visible = InflatableText.settings.showBoundingBox;
 }
 
 // ========== LIGHTING SETUP ==========
@@ -333,9 +340,11 @@ function loadFont() {
 }
 
 // ========== BALLOON MATERIAL CREATION ==========
-function createBalloonMaterial(hue) {
-    // Create realistic balloon material with standard Three.js material
-    const color = new THREE.Color().setHSL(hue, 0.8, 0.6);
+function createBalloonMaterial(colorIndex) {
+    // Get color from palette, cycling through if index exceeds palette length
+    const palette = InflatableText.settings.letterColors;
+    const colorHex = palette[colorIndex % palette.length];
+    const color = new THREE.Color(colorHex);
 
     const material = new THREE.MeshPhysicalMaterial({
         color: color,
@@ -355,7 +364,7 @@ function createBalloonMaterial(hue) {
 }
 
 // ========== CREATE INDIVIDUAL LETTER MESH ==========
-function createLetterMesh(char) {
+function createLetterMesh(char, letterIndex) {
     if (!InflatableText.font) {
         console.warn('⚠️ Font not loaded yet');
         return null;
@@ -394,9 +403,8 @@ function createLetterMesh(char) {
     // Create initial geometry with 0 bevel (flat)
     const geometry = createLetterGeometry(char, 0, 0);
 
-    // Create material with random hue
-    const hue = Math.random();
-    const material = createBalloonMaterial(hue);
+    // Create material with color from palette, cycling through based on letter index
+    const material = createBalloonMaterial(letterIndex);
 
     // Create mesh
     letterObj.mesh = new THREE.Mesh(geometry, material);
@@ -591,7 +599,7 @@ function setupControls() {
             for (let i = currentLength; i < newText.length; i++) {
                 const char = newText[i];
                 if (char.trim()) { // Only create mesh for non-whitespace
-                    const letterObj = createLetterMesh(char);
+                    const letterObj = createLetterMesh(char, i);
                     if (letterObj) {
                         InflatableText.letterMeshes.push(letterObj);
                     }
@@ -804,6 +812,15 @@ function setupControls() {
         colliderSize.value = e.target.value;
     });
 
+    // Color palette controls
+    setupColorPalette();
+
+    // Bounding box visibility toggle
+    const showBoundingBox = document.getElementById('show-bounding-box');
+    showBoundingBox.addEventListener('change', (e) => {
+        InflatableText.settings.showBoundingBox = e.target.checked;
+        updateBoundingBoxDebug();
+    });
 
     // Clear button - removes all letters
     const clearBtn = document.getElementById('clear-btn');
@@ -822,6 +839,87 @@ function setupControls() {
             textInput.value = "";
         });
     }
+}
+
+// ========== COLOR PALETTE UI ==========
+function setupColorPalette() {
+    renderColorPalette();
+
+    // Add color button
+    const addColorBtn = document.getElementById('add-color-btn');
+    addColorBtn.addEventListener('click', () => {
+        // Add a random color
+        const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+        InflatableText.settings.letterColors.push(randomColor);
+        renderColorPalette();
+        updateAllLetterColors();
+    });
+}
+
+function renderColorPalette() {
+    const paletteList = document.getElementById('color-palette-list');
+    paletteList.innerHTML = '';
+
+    // Create compact container for all colors
+    const colorsContainer = document.createElement('div');
+    colorsContainer.style.display = 'flex';
+    colorsContainer.style.flexWrap = 'wrap';
+    colorsContainer.style.gap = '8px';
+    colorsContainer.style.marginBottom = '10px';
+
+    InflatableText.settings.letterColors.forEach((color, index) => {
+        const colorItem = document.createElement('div');
+        colorItem.style.display = 'flex';
+        colorItem.style.flexDirection = 'column';
+        colorItem.style.alignItems = 'center';
+        colorItem.style.gap = '4px';
+
+        const colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.value = color;
+        colorInput.style.width = '40px';
+        colorInput.style.height = '40px';
+        colorInput.style.padding = '0';
+        colorInput.style.border = 'none';
+        colorInput.style.borderRadius = '4px';
+        colorInput.style.cursor = 'pointer';
+        colorInput.addEventListener('input', (e) => {
+            InflatableText.settings.letterColors[index] = e.target.value;
+            updateAllLetterColors();
+        });
+
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = '×';
+        removeBtn.className = 'chatooly-button';
+        removeBtn.style.width = '40px';
+        removeBtn.style.height = '20px';
+        removeBtn.style.padding = '0';
+        removeBtn.style.fontSize = '14px';
+        removeBtn.style.lineHeight = '1';
+        removeBtn.addEventListener('click', () => {
+            if (InflatableText.settings.letterColors.length > 1) {
+                InflatableText.settings.letterColors.splice(index, 1);
+                renderColorPalette();
+                updateAllLetterColors();
+            }
+        });
+
+        colorItem.appendChild(colorInput);
+        colorItem.appendChild(removeBtn);
+        colorsContainer.appendChild(colorItem);
+    });
+
+    paletteList.appendChild(colorsContainer);
+}
+
+function updateAllLetterColors() {
+    InflatableText.letterMeshes.forEach((letterObj, index) => {
+        if (letterObj.mesh && letterObj.mesh.material) {
+            const palette = InflatableText.settings.letterColors;
+            const colorHex = palette[index % palette.length];
+            letterObj.mesh.material.color.set(colorHex);
+        }
+    });
 }
 
 // ========== UPDATE MATERIAL PROPERTIES ==========
