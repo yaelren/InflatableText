@@ -24,6 +24,10 @@ const InflatableText = {
     settings: {
         inflationSpeed: 1.0, // Speed of bevel animation (higher = faster)
         fontSize: 5,
+        autoSpacing: true, // Automatically calculate spacing based on font size
+        randomSpawn: false, // Use random spawn positions instead of grid layout
+        letterSpacing: 0.3, // Multiplier for spacing between letters (0.1 = very tight, 2 = very loose)
+        lineSpacing: 0.3, // Multiplier for spacing between lines (0.1 = very tight, 2 = very loose)
         backgroundColor: '#000000',
         backgroundImage: null, // Background image texture
         backgroundImageSprite: null, // Sprite for background image rendering
@@ -637,9 +641,22 @@ function setupControls() {
         const maxLineLength = Math.max(...lines.map(line => line.length));
         if (maxLineLength === 0) return;
 
-        // Calculate letter spacing
-        const letterWidth = boxWidth / maxLineLength;
-        const letterHeight = boxHeight / lines.length;
+        // Calculate letter spacing using settings
+        let letterWidth, letterHeight;
+
+        if (InflatableText.settings.autoSpacing) {
+            // Automatic spacing based on font size
+            letterWidth = InflatableText.settings.fontSize * 1.2; // 120% of font size
+            letterHeight = InflatableText.settings.fontSize * 1.5; // 150% of font size for line height
+        } else {
+            // Manual spacing using sliders
+            letterWidth = (boxWidth / maxLineLength) * InflatableText.settings.letterSpacing;
+            letterHeight = (boxHeight / lines.length) * InflatableText.settings.lineSpacing;
+        }
+
+        // Calculate total height of all lines and center vertically
+        const totalTextHeight = lines.length * letterHeight;
+        const verticalOffset = (boxHeight - totalTextHeight) / 2;
 
         // Build array of new letter data with positions
         const newLetters = [];
@@ -654,8 +671,20 @@ function setupControls() {
                 const char = line[colIndex];
 
                 if (char.trim()) {
-                    const x = bounds.minX + centerOffset + charIndexInLine * letterWidth + letterWidth / 2;
-                    const y = bounds.maxY - rowIndex * letterHeight - letterHeight / 2;
+                    let x, y;
+
+                    if (InflatableText.settings.randomSpawn) {
+                        // Random spawn position within bounds
+                        const angle = Math.random() * Math.PI * 2;
+                        const radius = InflatableText.settings.spawnRadius;
+                        x = Math.cos(angle) * radius;
+                        y = Math.sin(angle) * radius;
+                    } else {
+                        // Grid layout position
+                        x = bounds.minX + centerOffset + charIndexInLine * letterWidth + letterWidth / 2;
+                        y = bounds.maxY - verticalOffset - rowIndex * letterHeight - letterHeight / 2;
+                    }
+
                     newLetters.push({ char, x, y });
                     charIndexInLine++;
                 }
@@ -681,17 +710,19 @@ function setupControls() {
             if (index < InflatableText.letterMeshes.length) {
                 const letterObj = InflatableText.letterMeshes[index];
 
-                // Only update position if it has significantly changed (to avoid physics jitter)
-                const positionChanged =
-                    Math.abs(letterObj.position.x - newLetter.x) > 0.1 ||
-                    Math.abs(letterObj.position.y - newLetter.y) > 0.1;
+                // Only update position if NOT in random spawn mode AND position has significantly changed
+                if (!InflatableText.settings.randomSpawn) {
+                    const positionChanged =
+                        Math.abs(letterObj.position.x - newLetter.x) > 0.1 ||
+                        Math.abs(letterObj.position.y - newLetter.y) > 0.1;
 
-                if (positionChanged) {
-                    letterObj.position.x = newLetter.x;
-                    letterObj.position.y = newLetter.y;
-                    // Reset velocity when position is updated
-                    letterObj.velocity.x = 0;
-                    letterObj.velocity.y = 0;
+                    if (positionChanged) {
+                        letterObj.position.x = newLetter.x;
+                        letterObj.position.y = newLetter.y;
+                        // Reset velocity when position is updated
+                        letterObj.velocity.x = 0;
+                        letterObj.velocity.y = 0;
+                    }
                 }
 
                 // Update character if changed
@@ -834,10 +865,91 @@ function setupControls() {
     fontSize.addEventListener('input', (e) => {
         InflatableText.settings.fontSize = parseFloat(e.target.value);
         fontSizeInput.value = e.target.value;
+        // If auto spacing is on, trigger text update to recalculate
+        if (InflatableText.settings.autoSpacing) {
+            const textInput = document.getElementById('text-input');
+            textInput.dispatchEvent(new Event('input'));
+        }
     });
     fontSizeInput.addEventListener('input', (e) => {
         InflatableText.settings.fontSize = parseFloat(e.target.value);
         fontSize.value = e.target.value;
+        // If auto spacing is on, trigger text update to recalculate
+        if (InflatableText.settings.autoSpacing) {
+            const textInput = document.getElementById('text-input');
+            textInput.dispatchEvent(new Event('input'));
+        }
+    });
+
+    // Automatic spacing toggle
+    const autoSpacing = document.getElementById('auto-spacing');
+    const letterSpacing = document.getElementById('letter-spacing');
+    const letterSpacingInput = document.getElementById('letter-spacing-input');
+    const lineSpacing = document.getElementById('line-spacing');
+    const lineSpacingInput = document.getElementById('line-spacing-input');
+
+    function updateSpacingControlsState() {
+        const isAuto = InflatableText.settings.autoSpacing;
+        letterSpacing.disabled = isAuto;
+        letterSpacingInput.disabled = isAuto;
+        lineSpacing.disabled = isAuto;
+        lineSpacingInput.disabled = isAuto;
+
+        // Grey out labels
+        letterSpacing.style.opacity = isAuto ? '0.5' : '1';
+        letterSpacingInput.style.opacity = isAuto ? '0.5' : '1';
+        lineSpacing.style.opacity = isAuto ? '0.5' : '1';
+        lineSpacingInput.style.opacity = isAuto ? '0.5' : '1';
+    }
+
+    autoSpacing.addEventListener('change', (e) => {
+        InflatableText.settings.autoSpacing = e.target.checked;
+        updateSpacingControlsState();
+        // Trigger text input update to recalculate positions
+        const textInput = document.getElementById('text-input');
+        textInput.dispatchEvent(new Event('input'));
+    });
+
+    // Initialize spacing controls state
+    updateSpacingControlsState();
+
+    // Random spawn toggle
+    const randomSpawn = document.getElementById('random-spawn');
+    randomSpawn.addEventListener('change', (e) => {
+        InflatableText.settings.randomSpawn = e.target.checked;
+        // Note: Don't trigger text update here - only affects new letters from now on
+    });
+
+    // Letter spacing (already declared above)
+    letterSpacing.addEventListener('input', (e) => {
+        InflatableText.settings.letterSpacing = parseFloat(e.target.value);
+        letterSpacingInput.value = e.target.value;
+        // Trigger text input update to recalculate positions
+        const textInput = document.getElementById('text-input');
+        textInput.dispatchEvent(new Event('input'));
+    });
+    letterSpacingInput.addEventListener('input', (e) => {
+        InflatableText.settings.letterSpacing = parseFloat(e.target.value);
+        letterSpacing.value = e.target.value;
+        // Trigger text input update to recalculate positions
+        const textInput = document.getElementById('text-input');
+        textInput.dispatchEvent(new Event('input'));
+    });
+
+    // Line spacing (already declared above)
+    lineSpacing.addEventListener('input', (e) => {
+        InflatableText.settings.lineSpacing = parseFloat(e.target.value);
+        lineSpacingInput.value = e.target.value;
+        // Trigger text input update to recalculate positions
+        const textInput = document.getElementById('text-input');
+        textInput.dispatchEvent(new Event('input'));
+    });
+    lineSpacingInput.addEventListener('input', (e) => {
+        InflatableText.settings.lineSpacing = parseFloat(e.target.value);
+        lineSpacing.value = e.target.value;
+        // Trigger text input update to recalculate positions
+        const textInput = document.getElementById('text-input');
+        textInput.dispatchEvent(new Event('input'));
     });
 
     // Boundary padding
