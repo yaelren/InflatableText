@@ -23,7 +23,7 @@ const InflatableText = {
     // Settings
     settings: {
         inflationSpeed: 1.0, // Speed of bevel animation (higher = faster)
-        fontSize: 12,
+        fontSize: 5,
         backgroundColor: '#000000',
         backgroundImage: null, // Background image texture
         backgroundImageSprite: null, // Sprite for background image rendering
@@ -41,9 +41,12 @@ const InflatableText = {
         targetBevelThickness: 0.23,
         targetBevelSize: 0.15,
 
-        // Floating animation
-        floatSpeed: 0.5,
-        floatAmount: 2.0
+        // Physics settings
+        spawnRadius: 5,
+        gravity: 0,
+        boundaryPadding: 5, // Padding from canvas edges
+        bounciness: 0.1, // 0 = no bounce, 1 = full bounce
+        colliderSize: 0.4 // Multiplier for collision radius (0.3 = small, 2 = large)
     },
 
     // Store light references for runtime updates
@@ -54,8 +57,13 @@ const InflatableText = {
         rim: null
     },
 
-    // Letter positioning
-    nextLetterX: -20 // Start position for letters
+    // Canvas bounds (updated on resize)
+    canvasBounds: {
+        minX: -400,
+        maxX: 400,
+        minY: -300,
+        maxY: 300
+    }
 };
 
 // ========== INITIALIZATION ==========
@@ -104,6 +112,9 @@ function init() {
     // Add lighting
     setupLighting();
 
+    // Add debug bounding box
+    createBoundingBoxDebug();
+
     // Load font (don't create initial text)
     loadFont();
 
@@ -113,6 +124,9 @@ function init() {
     // Listen for canvas resize events
     document.addEventListener('chatooly:canvas-resized', handleCanvasResize);
     window.addEventListener('resize', handleWindowResize);
+
+    // Calculate initial canvas bounds
+    updateCanvasBounds();
 
     // Start animation loop
     animate();
@@ -128,6 +142,7 @@ function handleCanvasResize(e) {
     InflatableText.renderer.setSize(newWidth, newHeight, false);
     InflatableText.camera.aspect = newWidth / newHeight;
     InflatableText.camera.updateProjectionMatrix();
+    updateCanvasBounds();
 }
 
 function handleWindowResize() {
@@ -138,6 +153,57 @@ function handleWindowResize() {
     InflatableText.renderer.setSize(containerWidth, containerHeight);
     InflatableText.camera.aspect = containerWidth / containerHeight;
     InflatableText.camera.updateProjectionMatrix();
+    updateCanvasBounds();
+}
+
+// ========== UPDATE CANVAS BOUNDS ==========
+function updateCanvasBounds() {
+    const container = document.getElementById('chatooly-container');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    // Calculate visible area in world space based on camera
+    const vFOV = InflatableText.camera.fov * Math.PI / 180;
+    const distance = InflatableText.camera.position.z;
+    const visibleHeight = 2 * Math.tan(vFOV / 2) * distance;
+    const visibleWidth = visibleHeight * InflatableText.camera.aspect;
+
+    const padding = InflatableText.settings.boundaryPadding;
+
+    InflatableText.canvasBounds = {
+        minX: -(visibleWidth / 2) + padding,
+        maxX: (visibleWidth / 2) - padding,
+        minY: -(visibleHeight / 2) + padding,
+        maxY: (visibleHeight / 2) - padding
+    };
+
+    // Update debug bounding box
+    updateBoundingBoxDebug();
+}
+
+// ========== DEBUG BOUNDING BOX ==========
+let debugBoundingBox = null;
+
+function createBoundingBoxDebug() {
+    // Create a wireframe box to visualize boundaries
+    const geometry = new THREE.BoxGeometry(1, 1, 5);
+    const edges = new THREE.EdgesGeometry(geometry);
+    const material = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 });
+    debugBoundingBox = new THREE.LineSegments(edges, material);
+    InflatableText.scene.add(debugBoundingBox);
+}
+
+function updateBoundingBoxDebug() {
+    if (!debugBoundingBox) return;
+
+    const bounds = InflatableText.canvasBounds;
+    const width = bounds.maxX - bounds.minX;
+    const height = bounds.maxY - bounds.minY;
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+
+    debugBoundingBox.scale.set(width, height, 1);
+    debugBoundingBox.position.set(centerX, centerY, 0);
 }
 
 // ========== LIGHTING SETUP ==========
@@ -275,12 +341,9 @@ function createBalloonMaterial(hue) {
         color: color,
         metalness: 0.1,
         roughness: 0.2,
-        transmission: 0.3,
-        thickness: 0.5,
         clearcoat: 1.0,
         clearcoatRoughness: 0.1,
         reflectivity: 0.9,
-        ior: 1.4,
         transparent: true,
         opacity: 0.9,
         side: THREE.DoubleSide,
@@ -298,6 +361,12 @@ function createLetterMesh(char) {
         return null;
     }
 
+    // Calculate random spawn position around center
+    const angle = Math.random() * Math.PI * 2;
+    const radius = InflatableText.settings.spawnRadius;
+    const spawnX = Math.cos(angle) * radius;
+    const spawnY = Math.sin(angle) * radius;
+
     // Create letter object to track animation state
     const letterObj = {
         char: char,
@@ -309,12 +378,15 @@ function createLetterMesh(char) {
         inflation: 0, // 0 to 1
         isInflating: true,
 
-        // Floating animation (starts after inflation)
-        floatOffset: Math.random() * Math.PI * 2, // Random phase
-        floatTime: 0,
-        position: {
-            x: InflatableText.nextLetterX,
+        // Physics
+        velocity: {
+            x: 0,
             y: 0,
+            z: 0
+        },
+        position: {
+            x: spawnX,
+            y: spawnY,
             z: 0
         }
     };
@@ -334,9 +406,6 @@ function createLetterMesh(char) {
 
     // Add to scene
     InflatableText.scene.add(letterObj.mesh);
-
-    // Move next letter position to the right
-    InflatableText.nextLetterX += InflatableText.settings.fontSize * 1.2;
 
     console.log('✅ Letter created:', char);
     return letterObj;
@@ -377,6 +446,8 @@ function createLetterGeometry(char, bevelThickness, bevelSize) {
 
 // ========== UPDATE ALL LETTERS ==========
 function updateLetters(deltaTime) {
+    const bounds = InflatableText.canvasBounds;
+
     InflatableText.letterMeshes.forEach(letterObj => {
         // INFLATION ANIMATION (plays once on spawn)
         if (letterObj.isInflating) {
@@ -404,20 +475,84 @@ function updateLetters(deltaTime) {
             oldGeometry.dispose();
         }
 
-        // FLOATING ANIMATION (starts after inflation)
-        if (!letterObj.isInflating) {
-            letterObj.floatTime += deltaTime * InflatableText.settings.floatSpeed;
+        // PHYSICS (gravity and boundary collision)
+        // Apply gravity
+        letterObj.velocity.y -= InflatableText.settings.gravity * deltaTime * 60;
 
-            // Gentle up/down float
-            const floatY = Math.sin(letterObj.floatTime + letterObj.floatOffset) * InflatableText.settings.floatAmount;
+        // Update position
+        letterObj.position.x += letterObj.velocity.x * deltaTime * 60;
+        letterObj.position.y += letterObj.velocity.y * deltaTime * 60;
 
-            // Gentle left/right drift
-            const floatX = Math.cos(letterObj.floatTime * 0.5 + letterObj.floatOffset) * InflatableText.settings.floatAmount * 0.5;
-
-            letterObj.mesh.position.y = letterObj.position.y + floatY;
-            letterObj.mesh.position.x = letterObj.position.x + floatX;
+        // Boundary collision with bounce
+        if (letterObj.position.x < bounds.minX) {
+            letterObj.position.x = bounds.minX;
+            letterObj.velocity.x = Math.abs(letterObj.velocity.x) * InflatableText.settings.bounciness;
+        } else if (letterObj.position.x > bounds.maxX) {
+            letterObj.position.x = bounds.maxX;
+            letterObj.velocity.x = -Math.abs(letterObj.velocity.x) * InflatableText.settings.bounciness;
         }
+
+        if (letterObj.position.y < bounds.minY) {
+            letterObj.position.y = bounds.minY;
+            letterObj.velocity.y = Math.abs(letterObj.velocity.y) * InflatableText.settings.bounciness;
+        } else if (letterObj.position.y > bounds.maxY) {
+            letterObj.position.y = bounds.maxY;
+            letterObj.velocity.y = -Math.abs(letterObj.velocity.y) * InflatableText.settings.bounciness;
+        }
+
+        // Update mesh position
+        letterObj.mesh.position.x = letterObj.position.x;
+        letterObj.mesh.position.y = letterObj.position.y;
     });
+
+    // Letter-to-letter collision detection
+    for (let i = 0; i < InflatableText.letterMeshes.length; i++) {
+        for (let j = i + 1; j < InflatableText.letterMeshes.length; j++) {
+            const letterA = InflatableText.letterMeshes[i];
+            const letterB = InflatableText.letterMeshes[j];
+
+            // Calculate distance between letters
+            const dx = letterB.position.x - letterA.position.x;
+            const dy = letterB.position.y - letterA.position.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Collision radius based on font size and collider size setting
+            const collisionRadius = InflatableText.settings.fontSize * InflatableText.settings.colliderSize;
+            const minDistance = collisionRadius * 2;
+
+            // Check for collision
+            if (distance < minDistance && distance > 0) {
+                // Calculate collision normal
+                const nx = dx / distance;
+                const ny = dy / distance;
+
+                // Separate overlapping letters
+                const overlap = minDistance - distance;
+                const separationX = nx * overlap * 0.5;
+                const separationY = ny * overlap * 0.5;
+
+                letterA.position.x -= separationX;
+                letterA.position.y -= separationY;
+                letterB.position.x += separationX;
+                letterB.position.y += separationY;
+
+                // Calculate relative velocity
+                const dvx = letterB.velocity.x - letterA.velocity.x;
+                const dvy = letterB.velocity.y - letterA.velocity.y;
+                const relativeVelocity = dvx * nx + dvy * ny;
+
+                // Only resolve if letters are moving towards each other
+                if (relativeVelocity < 0) {
+                    // Apply collision response with bounciness
+                    const impulse = relativeVelocity * InflatableText.settings.bounciness;
+                    letterA.velocity.x -= impulse * nx;
+                    letterA.velocity.y -= impulse * ny;
+                    letterB.velocity.x += impulse * nx;
+                    letterB.velocity.y += impulse * ny;
+                }
+            }
+        }
+    }
 }
 
 // ========== ANIMATION LOOP ==========
@@ -593,6 +728,80 @@ function setupControls() {
     inflationSpeedInput.addEventListener('input', (e) => {
         InflatableText.settings.inflationSpeed = parseFloat(e.target.value);
         inflationSpeed.value = e.target.value;
+    });
+
+    // Font size
+    const fontSize = document.getElementById('font-size');
+    const fontSizeInput = document.getElementById('font-size-input');
+    fontSize.addEventListener('input', (e) => {
+        InflatableText.settings.fontSize = parseFloat(e.target.value);
+        fontSizeInput.value = e.target.value;
+    });
+    fontSizeInput.addEventListener('input', (e) => {
+        InflatableText.settings.fontSize = parseFloat(e.target.value);
+        fontSize.value = e.target.value;
+    });
+
+    // Boundary padding
+    const boundaryPadding = document.getElementById('boundary-padding');
+    const boundaryPaddingInput = document.getElementById('boundary-padding-input');
+    boundaryPadding.addEventListener('input', (e) => {
+        InflatableText.settings.boundaryPadding = parseFloat(e.target.value);
+        boundaryPaddingInput.value = e.target.value;
+        updateCanvasBounds();
+    });
+    boundaryPaddingInput.addEventListener('input', (e) => {
+        InflatableText.settings.boundaryPadding = parseFloat(e.target.value);
+        boundaryPadding.value = e.target.value;
+        updateCanvasBounds();
+    });
+
+    // Spawn radius
+    const spawnRadius = document.getElementById('spawn-radius');
+    const spawnRadiusInput = document.getElementById('spawn-radius-input');
+    spawnRadius.addEventListener('input', (e) => {
+        InflatableText.settings.spawnRadius = parseFloat(e.target.value);
+        spawnRadiusInput.value = e.target.value;
+    });
+    spawnRadiusInput.addEventListener('input', (e) => {
+        InflatableText.settings.spawnRadius = parseFloat(e.target.value);
+        spawnRadius.value = e.target.value;
+    });
+
+    // Gravity
+    const gravity = document.getElementById('gravity');
+    const gravityInput = document.getElementById('gravity-input');
+    gravity.addEventListener('input', (e) => {
+        InflatableText.settings.gravity = parseFloat(e.target.value);
+        gravityInput.value = e.target.value;
+    });
+    gravityInput.addEventListener('input', (e) => {
+        InflatableText.settings.gravity = parseFloat(e.target.value);
+        gravity.value = e.target.value;
+    });
+
+    // Bounciness
+    const bounciness = document.getElementById('bounciness');
+    const bouncinessInput = document.getElementById('bounciness-input');
+    bounciness.addEventListener('input', (e) => {
+        InflatableText.settings.bounciness = parseFloat(e.target.value);
+        bouncinessInput.value = e.target.value;
+    });
+    bouncinessInput.addEventListener('input', (e) => {
+        InflatableText.settings.bounciness = parseFloat(e.target.value);
+        bounciness.value = e.target.value;
+    });
+
+    // Collider size
+    const colliderSize = document.getElementById('collider-size');
+    const colliderSizeInput = document.getElementById('collider-size-input');
+    colliderSize.addEventListener('input', (e) => {
+        InflatableText.settings.colliderSize = parseFloat(e.target.value);
+        colliderSizeInput.value = e.target.value;
+    });
+    colliderSizeInput.addEventListener('input', (e) => {
+        InflatableText.settings.colliderSize = parseFloat(e.target.value);
+        colliderSize.value = e.target.value;
     });
 
 
