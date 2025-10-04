@@ -74,10 +74,7 @@ const InflatableText = {
         maxX: 400,
         minY: -300,
         maxY: 300
-    },
-
-    // Click spawn position (null = use random spawn)
-    clickSpawnPosition: null
+    }
 };
 
 // ========== INITIALIZATION ==========
@@ -135,8 +132,7 @@ function init() {
     // Setup controls
     setupControls();
 
-    // Setup canvas click interaction
-    setupCanvasInteraction();
+    // Canvas click interaction removed - using grid layout now
 
     // Listen for canvas resize events
     document.addEventListener('chatooly:canvas-resized', handleCanvasResize);
@@ -379,7 +375,7 @@ function createBalloonMaterial(colorIndex) {
 }
 
 // ========== CREATE INDIVIDUAL LETTER MESH ==========
-function createLetterMesh(char, letterIndex, spawnPosition = null) {
+function createLetterMesh(char, letterIndex, gridPosition = null) {
     if (!InflatableText.font) {
         console.warn('⚠️ Font not loaded yet');
         return null;
@@ -387,12 +383,12 @@ function createLetterMesh(char, letterIndex, spawnPosition = null) {
 
     let spawnX, spawnY;
 
-    if (spawnPosition) {
-        // Use provided position (from click)
-        spawnX = spawnPosition.x;
-        spawnY = spawnPosition.y;
+    if (gridPosition) {
+        // Use grid position (from text layout)
+        spawnX = gridPosition.x;
+        spawnY = gridPosition.y;
     } else {
-        // Calculate random spawn position around center
+        // Calculate random spawn position around center (fallback)
         const angle = Math.random() * Math.PI * 2;
         const radius = InflatableText.settings.spawnRadius;
         spawnX = Math.cos(angle) * radius;
@@ -608,61 +604,68 @@ function animate() {
     InflatableText.renderer.render(InflatableText.scene, InflatableText.camera);
 }
 
-// ========== CANVAS INTERACTION ==========
-function setupCanvasInteraction() {
-    const canvas = InflatableText.canvas;
-    const textInput = document.getElementById('text-input');
-
-    canvas.addEventListener('click', (e) => {
-        // Get mouse position in canvas coordinates
-        const rect = canvas.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-        const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-        // Convert to world coordinates
-        const vector = new THREE.Vector3(x, y, 0.5);
-        vector.unproject(InflatableText.camera);
-
-        const dir = vector.sub(InflatableText.camera.position).normalize();
-        const distance = -InflatableText.camera.position.z / dir.z;
-        const pos = InflatableText.camera.position.clone().add(dir.multiplyScalar(distance));
-
-        // Store click position for next letter spawn
-        InflatableText.clickSpawnPosition = { x: pos.x, y: pos.y };
-
-        // Focus the text input
-        textInput.focus();
-
-        console.log('Click position:', pos.x.toFixed(2), pos.y.toFixed(2));
-    });
-}
-
 // ========== UI CONTROLS ==========
 function setupControls() {
     // Text input - creates new letter on each keystroke
     const textInput = document.getElementById('text-input');
 
     textInput.addEventListener('input', (e) => {
-        const newText = e.target.value.toUpperCase();
-        const currentLength = InflatableText.letterMeshes.length;
+        const text = e.target.value.toUpperCase();
 
-        // If text is longer, add new letters
-        if (newText.length > currentLength) {
-            for (let i = currentLength; i < newText.length; i++) {
-                const char = newText[i];
-                if (char.trim()) { // Only create mesh for non-whitespace
-                    const letterObj = createLetterMesh(char, i, InflatableText.clickSpawnPosition);
-                    if (letterObj) {
-                        InflatableText.letterMeshes.push(letterObj);
-                    }
+        // If empty, clear all
+        if (!text) {
+            InflatableText.letterMeshes.forEach(letterObj => {
+                if (letterObj.mesh) {
+                    InflatableText.scene.remove(letterObj.mesh);
+                    letterObj.mesh.geometry.dispose();
+                    letterObj.mesh.material.dispose();
+                }
+            });
+            InflatableText.letterMeshes = [];
+            return;
+        }
+
+        // Split text into lines
+        const lines = text.split('\n');
+
+        // Calculate grid layout parameters
+        const bounds = InflatableText.canvasBounds;
+        const boxWidth = bounds.maxX - bounds.minX;
+        const boxHeight = bounds.maxY - bounds.minY;
+
+        // Find the longest line for width calculation
+        const maxLineLength = Math.max(...lines.map(line => line.length));
+        if (maxLineLength === 0) return;
+
+        // Calculate letter spacing
+        const letterWidth = boxWidth / maxLineLength;
+        const letterHeight = boxHeight / lines.length;
+
+        // Build array of new letter data with positions
+        const newLetters = [];
+        lines.forEach((line, rowIndex) => {
+            // Calculate centering offset for this line
+            const lineLength = line.replace(/\s/g, '').length; // Count non-whitespace chars
+            const lineWidth = lineLength * letterWidth;
+            const centerOffset = (boxWidth - lineWidth) / 2;
+
+            let charIndexInLine = 0;
+            for (let colIndex = 0; colIndex < line.length; colIndex++) {
+                const char = line[colIndex];
+
+                if (char.trim()) {
+                    const x = bounds.minX + centerOffset + charIndexInLine * letterWidth + letterWidth / 2;
+                    const y = bounds.maxY - rowIndex * letterHeight - letterHeight / 2;
+                    newLetters.push({ char, x, y });
+                    charIndexInLine++;
                 }
             }
-            // Clear click spawn position after using it (next letters will use random spawn)
-            InflatableText.clickSpawnPosition = null;
-        }
-        // If text is shorter, remove letters from end
-        else if (newText.length < currentLength) {
-            const removeCount = currentLength - newText.length;
+        });
+
+        // Update existing letters positions and remove excess
+        if (newLetters.length < InflatableText.letterMeshes.length) {
+            // Remove extra letters from the end
+            const removeCount = InflatableText.letterMeshes.length - newLetters.length;
             for (let i = 0; i < removeCount; i++) {
                 const letterObj = InflatableText.letterMeshes.pop();
                 if (letterObj && letterObj.mesh) {
@@ -671,14 +674,47 @@ function setupControls() {
                     letterObj.mesh.material.dispose();
                 }
             }
-            // Adjust next position
-            if (InflatableText.letterMeshes.length > 0) {
-                const lastLetter = InflatableText.letterMeshes[InflatableText.letterMeshes.length - 1];
-                InflatableText.nextLetterX = lastLetter.position.x + InflatableText.settings.fontSize * 1.2;
-            } else {
-                InflatableText.nextLetterX = -20;
-            }
         }
+
+        // Update existing letters or add new ones
+        newLetters.forEach((newLetter, index) => {
+            if (index < InflatableText.letterMeshes.length) {
+                const letterObj = InflatableText.letterMeshes[index];
+
+                // Only update position if it has significantly changed (to avoid physics jitter)
+                const positionChanged =
+                    Math.abs(letterObj.position.x - newLetter.x) > 0.1 ||
+                    Math.abs(letterObj.position.y - newLetter.y) > 0.1;
+
+                if (positionChanged) {
+                    letterObj.position.x = newLetter.x;
+                    letterObj.position.y = newLetter.y;
+                    // Reset velocity when position is updated
+                    letterObj.velocity.x = 0;
+                    letterObj.velocity.y = 0;
+                }
+
+                // Update character if changed
+                if (letterObj.char !== newLetter.char) {
+                    letterObj.char = newLetter.char;
+                    // Rebuild geometry with current bevel values
+                    const oldGeometry = letterObj.mesh.geometry;
+                    letterObj.mesh.geometry = createLetterGeometry(
+                        letterObj.char,
+                        letterObj.currentBevelThickness,
+                        letterObj.currentBevelSize
+                    );
+                    oldGeometry.dispose();
+                }
+            } else {
+                // Create new letter
+                const gridPosition = { x: newLetter.x, y: newLetter.y };
+                const letterObj = createLetterMesh(newLetter.char, index, gridPosition);
+                if (letterObj) {
+                    InflatableText.letterMeshes.push(letterObj);
+                }
+            }
+        });
     });
 
     // Background color
