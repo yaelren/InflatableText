@@ -48,6 +48,11 @@ const InflatableText = {
         bounciness: 0.1, // 0 = no bounce, 1 = full bounce
         colliderSize: 0.4, // Multiplier for collision radius (0.3 = small, 2 = large)
 
+        // Bounding box settings
+        useBoundingBoxSize: false, // Use custom width/height instead of auto-calculated
+        boundingBoxWidth: 50,
+        boundingBoxHeight: 40,
+
         // Color palette for letters
         letterColors: ['#ff6b9d', '#c44569', '#4a69bd'],
 
@@ -69,7 +74,10 @@ const InflatableText = {
         maxX: 400,
         minY: -300,
         maxY: 300
-    }
+    },
+
+    // Click spawn position (null = use random spawn)
+    clickSpawnPosition: null
 };
 
 // ========== INITIALIZATION ==========
@@ -127,6 +135,9 @@ function init() {
     // Setup controls
     setupControls();
 
+    // Setup canvas click interaction
+    setupCanvasInteraction();
+
     // Listen for canvas resize events
     document.addEventListener('chatooly:canvas-resized', handleCanvasResize);
     window.addEventListener('resize', handleWindowResize);
@@ -164,15 +175,19 @@ function handleWindowResize() {
 
 // ========== UPDATE CANVAS BOUNDS ==========
 function updateCanvasBounds() {
-    const container = document.getElementById('chatooly-container');
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    let visibleWidth, visibleHeight;
 
-    // Calculate visible area in world space based on camera
-    const vFOV = InflatableText.camera.fov * Math.PI / 180;
-    const distance = InflatableText.camera.position.z;
-    const visibleHeight = 2 * Math.tan(vFOV / 2) * distance;
-    const visibleWidth = visibleHeight * InflatableText.camera.aspect;
+    if (InflatableText.settings.useBoundingBoxSize) {
+        // Use custom width and height
+        visibleWidth = InflatableText.settings.boundingBoxWidth;
+        visibleHeight = InflatableText.settings.boundingBoxHeight;
+    } else {
+        // Calculate visible area in world space based on camera
+        const vFOV = InflatableText.camera.fov * Math.PI / 180;
+        const distance = InflatableText.camera.position.z;
+        visibleHeight = 2 * Math.tan(vFOV / 2) * distance;
+        visibleWidth = visibleHeight * InflatableText.camera.aspect;
+    }
 
     const padding = InflatableText.settings.boundaryPadding;
 
@@ -364,17 +379,25 @@ function createBalloonMaterial(colorIndex) {
 }
 
 // ========== CREATE INDIVIDUAL LETTER MESH ==========
-function createLetterMesh(char, letterIndex) {
+function createLetterMesh(char, letterIndex, spawnPosition = null) {
     if (!InflatableText.font) {
         console.warn('⚠️ Font not loaded yet');
         return null;
     }
 
-    // Calculate random spawn position around center
-    const angle = Math.random() * Math.PI * 2;
-    const radius = InflatableText.settings.spawnRadius;
-    const spawnX = Math.cos(angle) * radius;
-    const spawnY = Math.sin(angle) * radius;
+    let spawnX, spawnY;
+
+    if (spawnPosition) {
+        // Use provided position (from click)
+        spawnX = spawnPosition.x;
+        spawnY = spawnPosition.y;
+    } else {
+        // Calculate random spawn position around center
+        const angle = Math.random() * Math.PI * 2;
+        const radius = InflatableText.settings.spawnRadius;
+        spawnX = Math.cos(angle) * radius;
+        spawnY = Math.sin(angle) * radius;
+    }
 
     // Create letter object to track animation state
     const letterObj = {
@@ -585,6 +608,35 @@ function animate() {
     InflatableText.renderer.render(InflatableText.scene, InflatableText.camera);
 }
 
+// ========== CANVAS INTERACTION ==========
+function setupCanvasInteraction() {
+    const canvas = InflatableText.canvas;
+    const textInput = document.getElementById('text-input');
+
+    canvas.addEventListener('click', (e) => {
+        // Get mouse position in canvas coordinates
+        const rect = canvas.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        // Convert to world coordinates
+        const vector = new THREE.Vector3(x, y, 0.5);
+        vector.unproject(InflatableText.camera);
+
+        const dir = vector.sub(InflatableText.camera.position).normalize();
+        const distance = -InflatableText.camera.position.z / dir.z;
+        const pos = InflatableText.camera.position.clone().add(dir.multiplyScalar(distance));
+
+        // Store click position for next letter spawn
+        InflatableText.clickSpawnPosition = { x: pos.x, y: pos.y };
+
+        // Focus the text input
+        textInput.focus();
+
+        console.log('Click position:', pos.x.toFixed(2), pos.y.toFixed(2));
+    });
+}
+
 // ========== UI CONTROLS ==========
 function setupControls() {
     // Text input - creates new letter on each keystroke
@@ -599,12 +651,14 @@ function setupControls() {
             for (let i = currentLength; i < newText.length; i++) {
                 const char = newText[i];
                 if (char.trim()) { // Only create mesh for non-whitespace
-                    const letterObj = createLetterMesh(char, i);
+                    const letterObj = createLetterMesh(char, i, InflatableText.clickSpawnPosition);
                     if (letterObj) {
                         InflatableText.letterMeshes.push(letterObj);
                     }
                 }
             }
+            // Clear click spawn position after using it (next letters will use random spawn)
+            InflatableText.clickSpawnPosition = null;
         }
         // If text is shorter, remove letters from end
         else if (newText.length < currentLength) {
@@ -820,6 +874,41 @@ function setupControls() {
     showBoundingBox.addEventListener('change', (e) => {
         InflatableText.settings.showBoundingBox = e.target.checked;
         updateBoundingBoxDebug();
+    });
+
+    // Use custom bounding box size toggle
+    const useBoundingBoxSize = document.getElementById('use-bounding-box-size');
+    useBoundingBoxSize.addEventListener('change', (e) => {
+        InflatableText.settings.useBoundingBoxSize = e.target.checked;
+        updateCanvasBounds();
+    });
+
+    // Bounding box width
+    const boundingBoxWidth = document.getElementById('bounding-box-width');
+    const boundingBoxWidthInput = document.getElementById('bounding-box-width-input');
+    boundingBoxWidth.addEventListener('input', (e) => {
+        InflatableText.settings.boundingBoxWidth = parseFloat(e.target.value);
+        boundingBoxWidthInput.value = e.target.value;
+        updateCanvasBounds();
+    });
+    boundingBoxWidthInput.addEventListener('input', (e) => {
+        InflatableText.settings.boundingBoxWidth = parseFloat(e.target.value);
+        boundingBoxWidth.value = e.target.value;
+        updateCanvasBounds();
+    });
+
+    // Bounding box height
+    const boundingBoxHeight = document.getElementById('bounding-box-height');
+    const boundingBoxHeightInput = document.getElementById('bounding-box-height-input');
+    boundingBoxHeight.addEventListener('input', (e) => {
+        InflatableText.settings.boundingBoxHeight = parseFloat(e.target.value);
+        boundingBoxHeightInput.value = e.target.value;
+        updateCanvasBounds();
+    });
+    boundingBoxHeightInput.addEventListener('input', (e) => {
+        InflatableText.settings.boundingBoxHeight = parseFloat(e.target.value);
+        boundingBoxHeight.value = e.target.value;
+        updateCanvasBounds();
     });
 
     // Clear button - removes all letters
