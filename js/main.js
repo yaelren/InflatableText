@@ -35,6 +35,7 @@ const InflatableText = {
         transparentBg: false, // Transparent background option
         useEnvMap: false, // Use background as environment map
         bgFillMode: 'fill', // 'fill' or 'fit'
+        lightFollowsMouse: false, // Toggle whether light follows mouse
 
         // Fixed geometry parameters
         extrudeDepth: 0.2,
@@ -78,6 +79,13 @@ const InflatableText = {
         maxX: 400,
         minY: -300,
         maxY: 300
+    },
+
+    // Mouse position in 3D space
+    mousePosition: {
+        x: 10,
+        y: 20,
+        z: 10
     }
 };
 
@@ -138,6 +146,9 @@ function init() {
 
     // Canvas click interaction removed - using grid layout now
 
+    // Mouse move tracking for light following
+    InflatableText.canvas.addEventListener('mousemove', handleMouseMove);
+
     // Listen for canvas resize events
     document.addEventListener('chatooly:canvas-resized', handleCanvasResize);
     window.addEventListener('resize', handleWindowResize);
@@ -171,6 +182,40 @@ function handleWindowResize() {
     InflatableText.camera.aspect = containerWidth / containerHeight;
     InflatableText.camera.updateProjectionMatrix();
     updateCanvasBounds();
+}
+
+// ========== MOUSE MOVE HANDLING ==========
+function handleMouseMove(event) {
+    if (!InflatableText.settings.lightFollowsMouse) return;
+
+    const rect = InflatableText.canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Convert screen coordinates to normalized device coordinates (-1 to +1)
+    const mouseX = (x / rect.width) * 2 - 1;
+    const mouseY = -(y / rect.height) * 2 + 1;
+
+    // Convert to 3D world position at camera's Z distance
+    const vector = new THREE.Vector3(mouseX, mouseY, 0.5);
+    vector.unproject(InflatableText.camera);
+    const dir = vector.sub(InflatableText.camera.position).normalize();
+    const distance = -InflatableText.camera.position.z / dir.z;
+    const pos = InflatableText.camera.position.clone().add(dir.multiplyScalar(distance));
+
+    // Update mouse position
+    InflatableText.mousePosition.x = pos.x;
+    InflatableText.mousePosition.y = pos.y;
+    InflatableText.mousePosition.z = 10; // Keep Z at 10 for good lighting angle
+
+    // Update main light position
+    if (InflatableText.lights.main) {
+        InflatableText.lights.main.position.set(
+            InflatableText.mousePosition.x,
+            InflatableText.mousePosition.y,
+            InflatableText.mousePosition.z
+        );
+    }
 }
 
 // ========== UPDATE CANVAS BOUNDS ==========

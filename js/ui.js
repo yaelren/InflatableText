@@ -412,6 +412,12 @@ function setupControls() {
     // Color palette controls
     setupColorPalette();
 
+    // Light follows mouse toggle
+    const lightFollowsMouse = document.getElementById('light-follows-mouse');
+    lightFollowsMouse.addEventListener('change', (e) => {
+        InflatableText.settings.lightFollowsMouse = e.target.checked;
+    });
+
     // Bounding box visibility toggle
     const showBoundingBox = document.getElementById('show-bounding-box');
     showBoundingBox.addEventListener('change', (e) => {
