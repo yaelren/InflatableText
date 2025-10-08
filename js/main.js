@@ -46,6 +46,16 @@ const InflatableText = {
         targetBevelThickness: 0.23,
         targetBevelSize: 0.15,
 
+        // Squish Animation settings
+        squishAnimation: false, // Enable squish animation
+        squishSpeed: 1.0, // Speed of squish animation
+        squishEasing: 'easeInOut', // Easing function
+        squishPingPong: true, // Ping pong back and forth vs one-way
+        squishWidthMin: 0.5, // Minimum width as percentage (50% = 0.5)
+        squishWidthMax: 1.5, // Maximum width as percentage (150% = 1.5)
+        squishHeightMin: 0.5, // Minimum height as percentage (50% = 0.5)
+        squishHeightMax: 1.5, // Maximum height as percentage (150% = 1.5)
+
         // Physics settings
         spawnRadius: 5,
         gravity: 0,
@@ -63,6 +73,14 @@ const InflatableText = {
 
         // Debug options
         showBoundingBox: true
+    },
+
+    // Squish animation state
+    squishState: {
+        time: 0, // Animation time
+        direction: 1, // 1 for growing, -1 for shrinking
+        currentScaleWidth: 1.0, // Current width scale factor
+        currentScaleHeight: 1.0 // Current height scale factor
     },
 
     // Store light references for runtime updates
@@ -89,9 +107,31 @@ const InflatableText = {
     }
 };
 
+// ========== CHATOOLY CANVAS INITIALIZATION ==========
+function initializeChatoolyCanvas() {
+    const setCanvasSize = () => {
+        if (window.Chatooly && window.Chatooly.canvasResizer) {
+            console.log('📐 Setting initial canvas size to 1000x1000');
+            window.Chatooly.canvasResizer.setExportSize(1000, 1000);
+            window.Chatooly.canvasResizer.applyExportSize();
+        }
+    };
+
+    // Try to set size immediately if CDN is ready
+    if (window.Chatooly && window.Chatooly.canvasResizer) {
+        setCanvasSize();
+    } else {
+        // Wait for Chatooly to be ready
+        window.addEventListener('chatooly:ready', setCanvasSize);
+    }
+}
+
 // ========== INITIALIZATION ==========
 function init() {
     InflatableText.canvas = document.getElementById('chatooly-canvas');
+
+    // Initialize Chatooly canvas to 1000x1000
+    initializeChatoolyCanvas();
 
     // Get container size to match canvas properly
     const container = document.getElementById('chatooly-container');
@@ -232,6 +272,12 @@ function updateCanvasBounds() {
         const distance = InflatableText.camera.position.z;
         visibleHeight = 2 * Math.tan(vFOV / 2) * distance;
         visibleWidth = visibleHeight * InflatableText.camera.aspect;
+    }
+
+    // Apply squish animation scale (separate width and height)
+    if (InflatableText.settings.squishAnimation) {
+        visibleWidth *= InflatableText.squishState.currentScaleWidth;
+        visibleHeight *= InflatableText.squishState.currentScaleHeight;
     }
 
     const padding = InflatableText.settings.boundaryPadding;
@@ -520,6 +566,81 @@ function createLetterGeometry(char, bevelThickness, bevelSize) {
     return geometry;
 }
 
+// ========== EASING FUNCTIONS ==========
+const EasingFunctions = {
+    linear: (t) => t,
+
+    easeInOut: (t) => {
+        return t < 0.5
+            ? 2 * t * t
+            : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    },
+
+    easeIn: (t) => t * t,
+
+    easeOut: (t) => 1 - Math.pow(1 - t, 2),
+
+    bounce: (t) => {
+        const n1 = 7.5625;
+        const d1 = 2.75;
+        if (t < 1 / d1) {
+            return n1 * t * t;
+        } else if (t < 2 / d1) {
+            return n1 * (t -= 1.5 / d1) * t + 0.75;
+        } else if (t < 2.5 / d1) {
+            return n1 * (t -= 2.25 / d1) * t + 0.9375;
+        } else {
+            return n1 * (t -= 2.625 / d1) * t + 0.984375;
+        }
+    },
+
+    elastic: (t) => {
+        const c4 = (2 * Math.PI) / 3;
+        return t === 0 ? 0
+            : t === 1 ? 1
+            : -Math.pow(2, 10 * t - 10) * Math.sin((t * 10 - 10.75) * c4);
+    }
+};
+
+// ========== UPDATE SQUISH ANIMATION ==========
+function updateSquishAnimation(deltaTime) {
+    if (!InflatableText.settings.squishAnimation) {
+        InflatableText.squishState.currentScaleWidth = 1.0;
+        InflatableText.squishState.currentScaleHeight = 1.0;
+        return;
+    }
+
+    const widthMin = InflatableText.settings.squishWidthMin;
+    const widthMax = InflatableText.settings.squishWidthMax;
+    const heightMin = InflatableText.settings.squishHeightMin;
+    const heightMax = InflatableText.settings.squishHeightMax;
+    const speed = InflatableText.settings.squishSpeed;
+    const easingType = InflatableText.settings.squishEasing;
+
+    // Update animation time
+    InflatableText.squishState.time += deltaTime * speed;
+
+    // Calculate current progress using sine wave for smooth animation
+    const cycle = InflatableText.squishState.time * Math.PI;
+    let rawT = (Math.sin(cycle) + 1) / 2; // Normalize to 0-1
+
+    if (!InflatableText.settings.squishPingPong) {
+        // One-way: just grow or shrink repeatedly
+        rawT = (Math.sin(cycle * 2) + 1) / 2;
+    }
+
+    // Apply easing function
+    const easingFunc = EasingFunctions[easingType] || EasingFunctions.easeInOut;
+    const t = easingFunc(rawT);
+
+    // Interpolate between min and max size for width and height separately
+    InflatableText.squishState.currentScaleWidth = widthMin + (widthMax - widthMin) * t;
+    InflatableText.squishState.currentScaleHeight = heightMin + (heightMax - heightMin) * t;
+
+    // Update canvas bounds with new scale
+    updateCanvasBounds();
+}
+
 // ========== UPDATE ALL LETTERS ==========
 function updateLetters(deltaTime) {
     const bounds = InflatableText.canvasBounds;
@@ -645,6 +766,9 @@ function animate() {
     if (InflatableText.controls) {
         InflatableText.controls.update();
     }
+
+    // Update squish animation (animates bounding box size)
+    updateSquishAnimation(deltaTime);
 
     // Update all letter animations
     updateLetters(deltaTime);

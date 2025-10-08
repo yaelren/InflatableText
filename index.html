@@ -103,6 +103,62 @@
                             <input type="range" id="inflation-speed" min="0.5" max="5" step="0.1" value="1.0">
                             <input type="number" id="inflation-speed-input" min="0.5" max="5" step="0.1" value="1.0">
                         </div>
+
+                        <div class="chatooly-control-group">
+                            <label>
+                                <input type="checkbox" id="squish-animation">
+                                Squish Animation
+                            </label>
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="squish-speed">Squish Speed</label>
+                            <input type="range" id="squish-speed" min="0.5" max="5" step="0.1" value="1.0">
+                            <input type="number" id="squish-speed-input" min="0.5" max="5" step="0.1" value="1.0">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="squish-easing">Easing</label>
+                            <select id="squish-easing">
+                                <option value="linear">Linear</option>
+                                <option value="easeInOut" selected>Ease In-Out</option>
+                                <option value="easeIn">Ease In</option>
+                                <option value="easeOut">Ease Out</option>
+                                <option value="bounce">Bounce</option>
+                                <option value="elastic">Elastic</option>
+                            </select>
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label>
+                                <input type="checkbox" id="squish-ping-pong" checked>
+                                Ping Pong (loop back and forth)
+                            </label>
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="squish-width-min">Width Min Size (%)</label>
+                            <input type="range" id="squish-width-min" min="20" max="100" step="5" value="50">
+                            <input type="number" id="squish-width-min-input" min="20" max="100" step="5" value="50">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="squish-width-max">Width Max Size (%)</label>
+                            <input type="range" id="squish-width-max" min="100" max="300" step="10" value="150">
+                            <input type="number" id="squish-width-max-input" min="100" max="300" step="10" value="150">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="squish-height-min">Height Min Size (%)</label>
+                            <input type="range" id="squish-height-min" min="20" max="100" step="5" value="50">
+                            <input type="number" id="squish-height-min-input" min="20" max="100" step="5" value="50">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="squish-height-max">Height Max Size (%)</label>
+                            <input type="range" id="squish-height-max" min="100" max="300" step="10" value="150">
+                            <input type="number" id="squish-height-max-input" min="100" max="300" step="10" value="150">
+                        </div>
                     </div>
                 </details>
 

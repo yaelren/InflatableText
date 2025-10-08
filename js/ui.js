@@ -346,6 +346,95 @@ function setupControls() {
         inflationSpeed.value = e.target.value;
     });
 
+    // Squish Animation toggle
+    const squishAnimation = document.getElementById('squish-animation');
+    squishAnimation.addEventListener('change', (e) => {
+        InflatableText.settings.squishAnimation = e.target.checked;
+        if (e.target.checked) {
+            // Reset squish state when enabling
+            InflatableText.squishState.time = 0;
+            InflatableText.squishState.currentScaleWidth = 1.0;
+            InflatableText.squishState.currentScaleHeight = 1.0;
+        } else {
+            // Reset to normal scale when disabling
+            InflatableText.squishState.currentScaleWidth = 1.0;
+            InflatableText.squishState.currentScaleHeight = 1.0;
+            updateCanvasBounds();
+        }
+    });
+
+    // Squish Speed
+    const squishSpeed = document.getElementById('squish-speed');
+    const squishSpeedInput = document.getElementById('squish-speed-input');
+    squishSpeed.addEventListener('input', (e) => {
+        InflatableText.settings.squishSpeed = parseFloat(e.target.value);
+        squishSpeedInput.value = e.target.value;
+    });
+    squishSpeedInput.addEventListener('input', (e) => {
+        InflatableText.settings.squishSpeed = parseFloat(e.target.value);
+        squishSpeed.value = e.target.value;
+    });
+
+    // Squish Easing
+    const squishEasing = document.getElementById('squish-easing');
+    squishEasing.addEventListener('change', (e) => {
+        InflatableText.settings.squishEasing = e.target.value;
+    });
+
+    // Squish Ping Pong toggle
+    const squishPingPong = document.getElementById('squish-ping-pong');
+    squishPingPong.addEventListener('change', (e) => {
+        InflatableText.settings.squishPingPong = e.target.checked;
+    });
+
+    // Squish Width Min
+    const squishWidthMin = document.getElementById('squish-width-min');
+    const squishWidthMinInput = document.getElementById('squish-width-min-input');
+    squishWidthMin.addEventListener('input', (e) => {
+        InflatableText.settings.squishWidthMin = parseFloat(e.target.value) / 100;
+        squishWidthMinInput.value = e.target.value;
+    });
+    squishWidthMinInput.addEventListener('input', (e) => {
+        InflatableText.settings.squishWidthMin = parseFloat(e.target.value) / 100;
+        squishWidthMin.value = e.target.value;
+    });
+
+    // Squish Width Max
+    const squishWidthMax = document.getElementById('squish-width-max');
+    const squishWidthMaxInput = document.getElementById('squish-width-max-input');
+    squishWidthMax.addEventListener('input', (e) => {
+        InflatableText.settings.squishWidthMax = parseFloat(e.target.value) / 100;
+        squishWidthMaxInput.value = e.target.value;
+    });
+    squishWidthMaxInput.addEventListener('input', (e) => {
+        InflatableText.settings.squishWidthMax = parseFloat(e.target.value) / 100;
+        squishWidthMax.value = e.target.value;
+    });
+
+    // Squish Height Min
+    const squishHeightMin = document.getElementById('squish-height-min');
+    const squishHeightMinInput = document.getElementById('squish-height-min-input');
+    squishHeightMin.addEventListener('input', (e) => {
+        InflatableText.settings.squishHeightMin = parseFloat(e.target.value) / 100;
+        squishHeightMinInput.value = e.target.value;
+    });
+    squishHeightMinInput.addEventListener('input', (e) => {
+        InflatableText.settings.squishHeightMin = parseFloat(e.target.value) / 100;
+        squishHeightMin.value = e.target.value;
+    });
+
+    // Squish Height Max
+    const squishHeightMax = document.getElementById('squish-height-max');
+    const squishHeightMaxInput = document.getElementById('squish-height-max-input');
+    squishHeightMax.addEventListener('input', (e) => {
+        InflatableText.settings.squishHeightMax = parseFloat(e.target.value) / 100;
+        squishHeightMaxInput.value = e.target.value;
+    });
+    squishHeightMaxInput.addEventListener('input', (e) => {
+        InflatableText.settings.squishHeightMax = parseFloat(e.target.value) / 100;
+        squishHeightMax.value = e.target.value;
+    });
+
     // Font size
     const fontSize = document.getElementById('font-size');
     const fontSizeInput = document.getElementById('font-size-input');
