@@ -3,6 +3,92 @@
  * Handles all user interface interactions and control panel setup
  */
 
+// ========== TEXT WRAPPING FOR AUTO SPACING ==========
+function wrapTextToFit(lines, boxWidth, boxHeight, letterWidth, letterHeight) {
+    const wrappedLines = [];
+
+    // Calculate max characters per line based on box width
+    const maxCharsPerLine = Math.floor(boxWidth / letterWidth);
+
+    if (maxCharsPerLine <= 0) {
+        return { lines: lines, letterWidth: letterWidth, letterHeight: letterHeight }; // Can't fit any characters, return as-is
+    }
+
+    // Wrap each line
+    lines.forEach(line => {
+        if (line.length === 0) {
+            wrappedLines.push('');
+            return;
+        }
+
+        // Split line into chunks that fit
+        const words = line.split(' ');
+        let currentLine = '';
+
+        words.forEach((word, wordIndex) => {
+            // Try adding this word to current line
+            const testLine = currentLine ? currentLine + ' ' + word : word;
+
+            if (testLine.length <= maxCharsPerLine) {
+                // Word fits on current line
+                currentLine = testLine;
+            } else {
+                // Word doesn't fit
+                if (currentLine) {
+                    // Save current line and start new line with word
+                    wrappedLines.push(currentLine);
+                    currentLine = word;
+                } else {
+                    // Word itself is longer than max chars - force break it
+                    if (word.length > maxCharsPerLine) {
+                        // Break long word into chunks
+                        for (let i = 0; i < word.length; i += maxCharsPerLine) {
+                            wrappedLines.push(word.substring(i, i + maxCharsPerLine));
+                        }
+                        currentLine = '';
+                    } else {
+                        currentLine = word;
+                    }
+                }
+            }
+
+            // Add last word if it's the final word
+            if (wordIndex === words.length - 1 && currentLine) {
+                wrappedLines.push(currentLine);
+            }
+        });
+    });
+
+    // Now check if wrapped lines fit vertically, and adjust spacing if needed
+    let adjustedLetterWidth = letterWidth;
+    let adjustedLetterHeight = letterHeight;
+
+    // Check if text fits vertically
+    const totalHeight = wrappedLines.length * letterHeight;
+    if (totalHeight > boxHeight) {
+        // Need to shrink line spacing to fit
+        adjustedLetterHeight = boxHeight / wrappedLines.length;
+    }
+
+    // Check if text fits horizontally (find longest line)
+    const maxLineLength = Math.max(...wrappedLines.map(line => line.replace(/\s/g, '').length));
+    const totalWidth = maxLineLength * letterWidth;
+    if (totalWidth > boxWidth) {
+        // Need to shrink letter spacing to fit
+        adjustedLetterWidth = boxWidth / maxLineLength;
+        // Also adjust letter height proportionally to maintain aspect ratio
+        adjustedLetterHeight = adjustedLetterWidth * 1.25; // Maintain similar ratio
+
+        // Re-check vertical fit with new letter height
+        const newTotalHeight = wrappedLines.length * adjustedLetterHeight;
+        if (newTotalHeight > boxHeight) {
+            adjustedLetterHeight = boxHeight / wrappedLines.length;
+        }
+    }
+
+    return { lines: wrappedLines, letterWidth: adjustedLetterWidth, letterHeight: adjustedLetterHeight };
+}
+
 // ========== UI CONTROLS ==========
 function setupControls() {
     // Text input - creates new letter on each keystroke
@@ -25,16 +111,12 @@ function setupControls() {
         }
 
         // Split text into lines
-        const lines = text.split('\n');
+        let lines = text.split('\n');
 
         // Calculate grid layout parameters
         const bounds = InflatableText.canvasBounds;
         const boxWidth = bounds.maxX - bounds.minX;
         const boxHeight = bounds.maxY - bounds.minY;
-
-        // Find the longest line for width calculation
-        const maxLineLength = Math.max(...lines.map(line => line.length));
-        if (maxLineLength === 0) return;
 
         // Calculate letter spacing using settings
         let letterWidth, letterHeight;
@@ -43,8 +125,18 @@ function setupControls() {
             // Automatic spacing based on font size
             letterWidth = InflatableText.settings.fontSize * 1.2; // 120% of font size
             letterHeight = InflatableText.settings.fontSize * 1.5; // 150% of font size for line height
+
+            // Auto-wrap text if it doesn't fit in the bounding box
+            const result = wrapTextToFit(lines, boxWidth, boxHeight, letterWidth, letterHeight);
+            lines = result.lines;
+            letterWidth = result.letterWidth;
+            letterHeight = result.letterHeight;
         } else {
             // Manual spacing using sliders
+            // Find the longest line for width calculation
+            const maxLineLength = Math.max(...lines.map(line => line.length));
+            if (maxLineLength === 0) return;
+
             letterWidth = (boxWidth / maxLineLength) * InflatableText.settings.letterSpacing;
             letterHeight = (boxHeight / lines.length) * InflatableText.settings.lineSpacing;
         }
