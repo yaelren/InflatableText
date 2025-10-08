@@ -249,6 +249,27 @@
                     </div>
                 </details>
 
+                <!-- Materials -->
+                <details class="chatooly-category" open>
+                    <summary>Materials</summary>
+                    <div class="chatooly-category-content">
+                        <div class="chatooly-control-group">
+                            <label for="material-preset">Material Type</label>
+                            <select id="material-preset">
+                                <option value="helium-latex" selected>Helium Latex</option>
+                                <option value="rubber">Rubber Balloon</option>
+                                <option value="foil">Foil/Mylar</option>
+                                <option value="bubble">Clear Bubble</option>
+                                <option value="metallic">Metallic</option>
+                            </select>
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <button id="apply-material-btn" class="chatooly-button">Apply Material to All Letters</button>
+                        </div>
+                    </div>
+                </details>
+
                 <!-- Background -->
                 <details class="chatooly-category">
                     <summary>Background</summary>
@@ -303,6 +324,129 @@
                                 <input type="checkbox" id="light-follows-mouse">
                                 Light Follows Mouse
                             </label>
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label>
+                                <input type="checkbox" id="environment-map-enabled" checked>
+                                Environment Map (Reflections)
+                            </label>
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="env-map-type">Environment Type</label>
+                            <select id="env-map-type">
+                                <option value="gradient" selected>Gradient (Default)</option>
+                                <option value="solid">Solid Color</option>
+                                <option value="image">Custom Image</option>
+                            </select>
+                        </div>
+
+                        <div class="chatooly-control-group" id="env-color-control" style="display: none;">
+                            <label for="env-color">Environment Color</label>
+                            <input type="color" id="env-color" value="#808080">
+                        </div>
+
+                        <div class="chatooly-control-group" id="env-image-control" style="display: none;">
+                            <label for="env-image">Upload Environment Image</label>
+                            <input type="file" id="env-image" accept="image/*">
+                        </div>
+
+                        <!-- Ambient Light -->
+                        <div class="chatooly-control-group">
+                            <label>
+                                <input type="checkbox" id="ambient-enabled" checked>
+                                Ambient Light
+                            </label>
+                        </div>
+                        <div class="chatooly-control-group">
+                            <label for="ambient-intensity">Intensity</label>
+                            <input type="range" id="ambient-intensity" min="0" max="2" step="0.1" value="0.6">
+                            <input type="number" id="ambient-intensity-input" min="0" max="2" step="0.1" value="0.6">
+                        </div>
+
+                        <!-- Main Light -->
+                        <div class="chatooly-control-group">
+                            <label>
+                                <input type="checkbox" id="main-light-enabled" checked>
+                                Main Light (Key)
+                            </label>
+                        </div>
+                        <div class="chatooly-control-group">
+                            <label for="main-light-intensity">Intensity</label>
+                            <input type="range" id="main-light-intensity" min="0" max="3" step="0.1" value="1.2">
+                            <input type="number" id="main-light-intensity-input" min="0" max="3" step="0.1" value="1.2">
+                        </div>
+                        <div class="chatooly-control-group">
+                            <label for="main-light-x">Position X</label>
+                            <input type="range" id="main-light-x" min="-30" max="30" step="1" value="10">
+                            <input type="number" id="main-light-x-input" min="-30" max="30" step="1" value="10">
+                        </div>
+                        <div class="chatooly-control-group">
+                            <label for="main-light-y">Position Y</label>
+                            <input type="range" id="main-light-y" min="-30" max="30" step="1" value="20">
+                            <input type="number" id="main-light-y-input" min="-30" max="30" step="1" value="20">
+                        </div>
+                        <div class="chatooly-control-group">
+                            <label for="main-light-z">Position Z</label>
+                            <input type="range" id="main-light-z" min="-30" max="30" step="1" value="10">
+                            <input type="number" id="main-light-z-input" min="-30" max="30" step="1" value="10">
+                        </div>
+
+                        <!-- Fill Light -->
+                        <div class="chatooly-control-group">
+                            <label>
+                                <input type="checkbox" id="fill-light-enabled" checked>
+                                Fill Light
+                            </label>
+                        </div>
+                        <div class="chatooly-control-group">
+                            <label for="fill-light-intensity">Intensity</label>
+                            <input type="range" id="fill-light-intensity" min="0" max="2" step="0.1" value="0.4">
+                            <input type="number" id="fill-light-intensity-input" min="0" max="2" step="0.1" value="0.4">
+                        </div>
+                        <div class="chatooly-control-group">
+                            <label for="fill-light-x">Position X</label>
+                            <input type="range" id="fill-light-x" min="-30" max="30" step="1" value="-10">
+                            <input type="number" id="fill-light-x-input" min="-30" max="30" step="1" value="-10">
+                        </div>
+                        <div class="chatooly-control-group">
+                            <label for="fill-light-y">Position Y</label>
+                            <input type="range" id="fill-light-y" min="-30" max="30" step="1" value="5">
+                            <input type="number" id="fill-light-y-input" min="-30" max="30" step="1" value="5">
+                        </div>
+                        <div class="chatooly-control-group">
+                            <label for="fill-light-z">Position Z</label>
+                            <input type="range" id="fill-light-z" min="-30" max="30" step="1" value="-5">
+                            <input type="number" id="fill-light-z-input" min="-30" max="30" step="1" value="-5">
+                        </div>
+
+                        <!-- Rim Light -->
+                        <div class="chatooly-control-group">
+                            <label>
+                                <input type="checkbox" id="rim-light-enabled" checked>
+                                Rim Light (Back)
+                            </label>
+                        </div>
+                        <div class="chatooly-control-group">
+                            <label for="rim-light-intensity">Intensity</label>
+                            <input type="range" id="rim-light-intensity" min="0" max="1" step="0.05" value="0.1">
+                            <input type="number" id="rim-light-intensity-input" min="0" max="1" step="0.05" value="0.1">
+                        </div>
+                        <div class="chatooly-control-group">
+                            <label for="rim-light-x">Position X</label>
+                            <input type="range" id="rim-light-x" min="-30" max="30" step="1" value="-5">
+                            <input type="number" id="rim-light-x-input" min="-30" max="30" step="1" value="-5">
+                        </div>
+                        <div class="chatooly-control-group">
+                            <label for="rim-light-y">Position Y</label>
+                            <input type="range" id="rim-light-y" min="-30" max="30" step="1" value="10">
+                            <input type="number" id="rim-light-y-input" min="-30" max="30" step="1" value="10">
+                        </div>
+                        <div class="chatooly-control-group">
+                            <label for="rim-light-z">Position Z</label>
+                            <input type="range" id="rim-light-z" min="-30" max="30" step="1" value="-15">
+                            <input type="number" id="rim-light-z-input" min="-30" max="30" step="1" value="-15">
                         </div>
                     </div>
                 </details>
@@ -376,6 +520,8 @@
     <script src="js/chatooly-config.js"></script>
 
     <!-- ========== DO NOT EDIT: Your Tool Logic ========== -->
+    <script src="js/lighting.js"></script>
+    <script src="js/materials.js"></script>
     <script src="js/main.js"></script>
     <script src="js/ui.js"></script>
 </body>

@@ -593,11 +593,66 @@ function setupControls() {
     // Color palette controls
     setupColorPalette();
 
+    // Material preset controls
+    setupMaterialControls();
+
+    // Lighting intensity controls
+    setupLightingControls();
+
     // Light follows mouse toggle
     const lightFollowsMouse = document.getElementById('light-follows-mouse');
     lightFollowsMouse.addEventListener('change', (e) => {
         InflatableText.settings.lightFollowsMouse = e.target.checked;
     });
+
+    // Environment map toggle
+    const environmentMapEnabled = document.getElementById('environment-map-enabled');
+    if (environmentMapEnabled) {
+        environmentMapEnabled.addEventListener('change', (e) => {
+            Materials.toggleEnvironmentMap(e.target.checked);
+        });
+    }
+
+    // Environment map type
+    const envMapType = document.getElementById('env-map-type');
+    const envColorControl = document.getElementById('env-color-control');
+    const envImageControl = document.getElementById('env-image-control');
+
+    if (envMapType) {
+        envMapType.addEventListener('change', (e) => {
+            const type = e.target.value;
+            InflatableText.settings.environmentMapType = type;
+
+            // Show/hide controls based on type
+            envColorControl.style.display = type === 'solid' ? 'block' : 'none';
+            envImageControl.style.display = type === 'image' ? 'block' : 'none';
+
+            // Update environment map
+            Lighting.updateEnvironmentMapType();
+        });
+    }
+
+    // Environment color
+    const envColor = document.getElementById('env-color');
+    if (envColor) {
+        envColor.addEventListener('input', (e) => {
+            InflatableText.settings.environmentMapColor = e.target.value;
+            if (InflatableText.settings.environmentMapType === 'solid') {
+                Lighting.updateEnvironmentMapType();
+            }
+        });
+    }
+
+    // Environment image upload
+    const envImage = document.getElementById('env-image');
+    if (envImage) {
+        envImage.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                Lighting.loadCustomEnvironmentMap(file);
+            }
+        });
+    }
 
     // Bounding box visibility toggle
     const showBoundingBox = document.getElementById('show-bounding-box');
@@ -764,4 +819,240 @@ function updateAllMaterialsEnvMap() {
             letterObj.mesh.material.needsUpdate = true;
         }
     });
+}
+
+// ========== MATERIAL PRESET CONTROLS ==========
+function setupMaterialControls() {
+    // Material preset dropdown
+    const materialPresetSelect = document.getElementById('material-preset');
+    if (materialPresetSelect) {
+        materialPresetSelect.addEventListener('change', (e) => {
+            InflatableText.settings.selectedMaterial = e.target.value;
+            console.log(`🎨 Material changed to: ${e.target.value}`);
+        });
+    }
+
+    // Apply material to all letters button
+    const applyMaterialBtn = document.getElementById('apply-material-btn');
+    if (applyMaterialBtn) {
+        applyMaterialBtn.addEventListener('click', () => {
+            Materials.applyMaterialToAllLetters();
+        });
+    }
+}
+
+// ========== LIGHTING CONTROLS ==========
+function setupLightingControls() {
+    // Ambient light toggle
+    const ambientEnabled = document.getElementById('ambient-enabled');
+    if (ambientEnabled) {
+        ambientEnabled.addEventListener('change', (e) => {
+            Lighting.toggleLights({ ambient: e.target.checked });
+        });
+    }
+
+    // Ambient light intensity
+    const ambientIntensity = document.getElementById('ambient-intensity');
+    const ambientIntensityInput = document.getElementById('ambient-intensity-input');
+    if (ambientIntensity && ambientIntensityInput) {
+        ambientIntensity.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            ambientIntensityInput.value = value;
+            Lighting.updateLightIntensities({ ambient: value });
+        });
+        ambientIntensityInput.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            ambientIntensity.value = value;
+            Lighting.updateLightIntensities({ ambient: value });
+        });
+    }
+
+    // Main light toggle
+    const mainLightEnabled = document.getElementById('main-light-enabled');
+    if (mainLightEnabled) {
+        mainLightEnabled.addEventListener('change', (e) => {
+            Lighting.toggleLights({ main: e.target.checked });
+        });
+    }
+
+    // Main light intensity
+    const mainLightIntensity = document.getElementById('main-light-intensity');
+    const mainLightIntensityInput = document.getElementById('main-light-intensity-input');
+    if (mainLightIntensity && mainLightIntensityInput) {
+        mainLightIntensity.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            mainLightIntensityInput.value = value;
+            Lighting.updateLightIntensities({ main: value });
+        });
+        mainLightIntensityInput.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            mainLightIntensity.value = value;
+            Lighting.updateLightIntensities({ main: value });
+        });
+    }
+
+    // Main light position controls
+    setupLightPositionControls('main', 'mainLightPosition', Lighting.updateMainLightPosition.bind(Lighting));
+
+    // Fill light toggle
+    const fillLightEnabled = document.getElementById('fill-light-enabled');
+    if (fillLightEnabled) {
+        fillLightEnabled.addEventListener('change', (e) => {
+            Lighting.toggleLights({ fill: e.target.checked });
+        });
+    }
+
+    // Fill light intensity
+    const fillLightIntensity = document.getElementById('fill-light-intensity');
+    const fillLightIntensityInput = document.getElementById('fill-light-intensity-input');
+    if (fillLightIntensity && fillLightIntensityInput) {
+        fillLightIntensity.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            fillLightIntensityInput.value = value;
+            Lighting.updateLightIntensities({ fill: value });
+        });
+        fillLightIntensityInput.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            fillLightIntensity.value = value;
+            Lighting.updateLightIntensities({ fill: value });
+        });
+    }
+
+    // Fill light position controls
+    setupLightPositionControls('fill', 'fillLightPosition', Lighting.updateFillLightPosition.bind(Lighting));
+
+    // Rim light toggle
+    const rimLightEnabled = document.getElementById('rim-light-enabled');
+    if (rimLightEnabled) {
+        rimLightEnabled.addEventListener('change', (e) => {
+            Lighting.toggleLights({ rim: e.target.checked });
+        });
+    }
+
+    // Rim light intensity
+    const rimLightIntensity = document.getElementById('rim-light-intensity');
+    const rimLightIntensityInput = document.getElementById('rim-light-intensity-input');
+    if (rimLightIntensity && rimLightIntensityInput) {
+        rimLightIntensity.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            rimLightIntensityInput.value = value;
+            Lighting.updateLightIntensities({ rim: value });
+        });
+        rimLightIntensityInput.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            rimLightIntensity.value = value;
+            Lighting.updateLightIntensities({ rim: value });
+        });
+    }
+
+    // Rim light position X
+    const rimLightX = document.getElementById('rim-light-x');
+    const rimLightXInput = document.getElementById('rim-light-x-input');
+    if (rimLightX && rimLightXInput) {
+        rimLightX.addEventListener('input', (e) => {
+            const x = parseFloat(e.target.value);
+            rimLightXInput.value = x;
+            const pos = InflatableText.settings.rimLightPosition;
+            Lighting.updateRimLightPosition(x, pos.y, pos.z);
+        });
+        rimLightXInput.addEventListener('input', (e) => {
+            const x = parseFloat(e.target.value);
+            rimLightX.value = x;
+            const pos = InflatableText.settings.rimLightPosition;
+            Lighting.updateRimLightPosition(x, pos.y, pos.z);
+        });
+    }
+
+    // Rim light position Y
+    const rimLightY = document.getElementById('rim-light-y');
+    const rimLightYInput = document.getElementById('rim-light-y-input');
+    if (rimLightY && rimLightYInput) {
+        rimLightY.addEventListener('input', (e) => {
+            const y = parseFloat(e.target.value);
+            rimLightYInput.value = y;
+            const pos = InflatableText.settings.rimLightPosition;
+            Lighting.updateRimLightPosition(pos.x, y, pos.z);
+        });
+        rimLightYInput.addEventListener('input', (e) => {
+            const y = parseFloat(e.target.value);
+            rimLightY.value = y;
+            const pos = InflatableText.settings.rimLightPosition;
+            Lighting.updateRimLightPosition(pos.x, y, pos.z);
+        });
+    }
+
+    // Rim light position Z
+    const rimLightZ = document.getElementById('rim-light-z');
+    const rimLightZInput = document.getElementById('rim-light-z-input');
+    if (rimLightZ && rimLightZInput) {
+        rimLightZ.addEventListener('input', (e) => {
+            const z = parseFloat(e.target.value);
+            rimLightZInput.value = z;
+            const pos = InflatableText.settings.rimLightPosition;
+            Lighting.updateRimLightPosition(pos.x, pos.y, z);
+        });
+        rimLightZInput.addEventListener('input', (e) => {
+            const z = parseFloat(e.target.value);
+            rimLightZ.value = z;
+            const pos = InflatableText.settings.rimLightPosition;
+            Lighting.updateRimLightPosition(pos.x, pos.y, z);
+        });
+    }
+}
+
+// ========== HELPER: LIGHT POSITION CONTROLS ==========
+function setupLightPositionControls(lightName, settingsKey, updateFunction) {
+    // X position
+    const xSlider = document.getElementById(`${lightName}-light-x`);
+    const xInput = document.getElementById(`${lightName}-light-x-input`);
+    if (xSlider && xInput) {
+        xSlider.addEventListener('input', (e) => {
+            const x = parseFloat(e.target.value);
+            xInput.value = x;
+            const pos = InflatableText.settings[settingsKey];
+            updateFunction(x, pos.y, pos.z);
+        });
+        xInput.addEventListener('input', (e) => {
+            const x = parseFloat(e.target.value);
+            xSlider.value = x;
+            const pos = InflatableText.settings[settingsKey];
+            updateFunction(x, pos.y, pos.z);
+        });
+    }
+
+    // Y position
+    const ySlider = document.getElementById(`${lightName}-light-y`);
+    const yInput = document.getElementById(`${lightName}-light-y-input`);
+    if (ySlider && yInput) {
+        ySlider.addEventListener('input', (e) => {
+            const y = parseFloat(e.target.value);
+            yInput.value = y;
+            const pos = InflatableText.settings[settingsKey];
+            updateFunction(pos.x, y, pos.z);
+        });
+        yInput.addEventListener('input', (e) => {
+            const y = parseFloat(e.target.value);
+            ySlider.value = y;
+            const pos = InflatableText.settings[settingsKey];
+            updateFunction(pos.x, y, pos.z);
+        });
+    }
+
+    // Z position
+    const zSlider = document.getElementById(`${lightName}-light-z`);
+    const zInput = document.getElementById(`${lightName}-light-z-input`);
+    if (zSlider && zInput) {
+        zSlider.addEventListener('input', (e) => {
+            const z = parseFloat(e.target.value);
+            zInput.value = z;
+            const pos = InflatableText.settings[settingsKey];
+            updateFunction(pos.x, pos.y, z);
+        });
+        zInput.addEventListener('input', (e) => {
+            const z = parseFloat(e.target.value);
+            zSlider.value = z;
+            const pos = InflatableText.settings[settingsKey];
+            updateFunction(pos.x, pos.y, z);
+        });
+    }
 }

@@ -1,0 +1,228 @@
+/*
+ * Materials Module - Balloon Material Presets
+ * Author: Studio Video
+ *
+ * Defines material presets for different balloon types and provides
+ * functions to create and apply materials to letter meshes.
+ */
+
+// ========== MATERIAL PRESETS ==========
+const MATERIAL_PRESETS = {
+    'helium-latex': {
+        name: 'Helium Latex',
+        description: 'Smooth, translucent balloon with subtle sheen',
+        metalness: 0.1,
+        roughness: 0.25,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.15,
+        reflectivity: 0.9,
+        opacity: 0.85,
+        envMapIntensity: 1.0,
+        transmission: 0.1
+    },
+    'rubber': {
+        name: 'Rubber Balloon',
+        description: 'Matte finish party balloon',
+        metalness: 0.0,
+        roughness: 0.5,
+        clearcoat: 0.3,
+        clearcoatRoughness: 0.3,
+        reflectivity: 0.5,
+        opacity: 0.9,
+        envMapIntensity: 0.5,
+        transmission: 0.0
+    },
+    'foil': {
+        name: 'Foil/Mylar',
+        description: 'Shiny metallic balloon with mirror-like finish',
+        metalness: 0.85,
+        roughness: 0.1,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.05,
+        reflectivity: 1.0,
+        opacity: 1.0,
+        envMapIntensity: 1.5,
+        transmission: 0.0
+    },
+    'bubble': {
+        name: 'Clear Bubble',
+        description: 'Transparent glass-like balloon',
+        metalness: 0.0,
+        roughness: 0.05,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.0,
+        reflectivity: 0.9,
+        opacity: 0.4,
+        envMapIntensity: 1.2,
+        transmission: 0.8
+    },
+    'metallic': {
+        name: 'Metallic',
+        description: 'Pure metallic opaque finish',
+        metalness: 1.0,
+        roughness: 0.2,
+        clearcoat: 0.5,
+        clearcoatRoughness: 0.1,
+        reflectivity: 1.0,
+        opacity: 1.0,
+        envMapIntensity: 2.0,
+        transmission: 0.0
+    }
+};
+
+// ========== MATERIALS NAMESPACE ==========
+const Materials = {
+    /**
+     * Create a balloon material with specified color and material preset
+     * @param {number} colorIndex - Index for color palette cycling
+     * @param {string} materialType - Material preset key (default: from settings)
+     * @returns {THREE.MeshPhysicalMaterial} Material instance
+     */
+    createBalloonMaterial: function(colorIndex, materialType = null) {
+        // Use provided material type or fall back to current setting
+        const presetKey = materialType || InflatableText.settings.selectedMaterial;
+        const preset = MATERIAL_PRESETS[presetKey];
+
+        if (!preset) {
+            console.warn(`⚠️ Material preset "${presetKey}" not found, using helium-latex`);
+            preset = MATERIAL_PRESETS['helium-latex'];
+        }
+
+        // Get color from palette, cycling through if index exceeds palette length
+        const palette = InflatableText.settings.letterColors;
+        const colorHex = palette[colorIndex % palette.length];
+        const color = new THREE.Color(colorHex);
+
+        // Determine which environment map to use
+        let envMap = null;
+        if (InflatableText.settings.environmentMapEnabled) {
+            if (InflatableText.settings.useEnvMap && InflatableText.settings.backgroundImage) {
+                // Use background image as environment map (from Background section)
+                envMap = InflatableText.settings.backgroundImage;
+            } else if (InflatableText.settings.currentEnvironmentMap) {
+                // Use current environment map (based on type: gradient/solid/image)
+                envMap = InflatableText.settings.currentEnvironmentMap;
+            } else if (InflatableText.settings.environmentMap) {
+                // Fallback to default gradient environment map
+                envMap = InflatableText.settings.environmentMap;
+            }
+        }
+
+        // Create material with preset properties
+        const material = new THREE.MeshPhysicalMaterial({
+            color: color,
+            metalness: preset.metalness,
+            roughness: preset.roughness,
+            clearcoat: preset.clearcoat,
+            clearcoatRoughness: preset.clearcoatRoughness,
+            reflectivity: preset.reflectivity,
+            transparent: true,
+            opacity: preset.opacity,
+            side: THREE.DoubleSide,
+            envMap: envMap,
+            envMapIntensity: preset.envMapIntensity,
+            transmission: preset.transmission || 0.0,
+            ior: 1.5 // Index of refraction for transmission
+        });
+
+        return material;
+    },
+
+    /**
+     * Apply current material preset to all existing letters
+     * Updates materials in-place and disposes old materials
+     */
+    applyMaterialToAllLetters: function() {
+        if (!InflatableText.letterMeshes || InflatableText.letterMeshes.length === 0) {
+            console.log('ℹ️ No letters to apply material to');
+            return;
+        }
+
+        const materialType = InflatableText.settings.selectedMaterial;
+        console.log(`🎨 Applying "${MATERIAL_PRESETS[materialType].name}" material to ${InflatableText.letterMeshes.length} letters`);
+
+        InflatableText.letterMeshes.forEach((letterObj, index) => {
+            // Create new material with same color index
+            const newMaterial = Materials.createBalloonMaterial(index, materialType);
+
+            // Dispose old material to free memory
+            if (letterObj.mesh.material) {
+                letterObj.mesh.material.dispose();
+            }
+
+            // Apply new material
+            letterObj.mesh.material = newMaterial;
+        });
+
+        console.log('✅ Material applied to all letters');
+    },
+
+    /**
+     * Get list of all available material presets
+     * @returns {Array} Array of preset objects with key, name, and description
+     */
+    getAvailablePresets: function() {
+        return Object.keys(MATERIAL_PRESETS).map(key => ({
+            key: key,
+            name: MATERIAL_PRESETS[key].name,
+            description: MATERIAL_PRESETS[key].description
+        }));
+    },
+
+    /**
+     * Toggle environment map on/off for all materials
+     * @param {boolean} enabled - Whether environment map should be enabled
+     */
+    toggleEnvironmentMap: function(enabled) {
+        InflatableText.settings.environmentMapEnabled = enabled;
+
+        // Update all existing letter materials
+        InflatableText.letterMeshes.forEach((letterObj) => {
+            if (letterObj.mesh && letterObj.mesh.material) {
+                let envMap = null;
+                if (enabled) {
+                    if (InflatableText.settings.useEnvMap && InflatableText.settings.backgroundImage) {
+                        envMap = InflatableText.settings.backgroundImage;
+                    } else if (InflatableText.settings.environmentMap) {
+                        envMap = InflatableText.settings.environmentMap;
+                    }
+                }
+                letterObj.mesh.material.envMap = envMap;
+                letterObj.mesh.material.needsUpdate = true;
+            }
+        });
+
+        console.log(`🌍 Environment map ${enabled ? 'enabled' : 'disabled'}`);
+    },
+
+    /**
+     * Update environment map on all existing materials
+     * Called when environment map type/color changes
+     */
+    updateAllMaterialsEnvironmentMap: function() {
+        // Determine which environment map to use
+        let envMap = null;
+        if (InflatableText.settings.environmentMapEnabled) {
+            if (InflatableText.settings.useEnvMap && InflatableText.settings.backgroundImage) {
+                envMap = InflatableText.settings.backgroundImage;
+            } else if (InflatableText.settings.currentEnvironmentMap) {
+                envMap = InflatableText.settings.currentEnvironmentMap;
+            } else if (InflatableText.settings.environmentMap) {
+                envMap = InflatableText.settings.environmentMap;
+            }
+        }
+
+        // Update all existing letter materials
+        InflatableText.letterMeshes.forEach((letterObj) => {
+            if (letterObj.mesh && letterObj.mesh.material) {
+                letterObj.mesh.material.envMap = envMap;
+                letterObj.mesh.material.needsUpdate = true;
+            }
+        });
+
+        console.log('🔄 Environment map updated on all materials');
+    }
+};
+
+// Make Materials globally available
+window.Materials = Materials;

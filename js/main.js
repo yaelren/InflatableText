@@ -71,6 +71,26 @@ const InflatableText = {
         // Color palette for letters
         letterColors: ['#ff6b9d', '#c44569', '#4a69bd'],
 
+        // Material settings
+        selectedMaterial: 'helium-latex', // Current material preset (helium-latex, rubber, foil, bubble)
+
+        // Lighting settings
+        environmentMapEnabled: true, // Toggle environment map reflections
+        environmentMapType: 'gradient', // 'gradient', 'solid', 'image'
+        environmentMapColor: '#808080', // Solid color for environment
+        customEnvironmentMap: null, // Custom uploaded environment map
+        ambientEnabled: true,
+        ambientIntensity: 0.6,      // Overall scene illumination
+        mainLightEnabled: true,
+        mainLightIntensity: 1.2,    // Key light (main directional)
+        mainLightPosition: { x: 10, y: 20, z: 10 },
+        fillLightEnabled: true,
+        fillLightIntensity: 0.4,    // Fill light (softer, opposite side)
+        fillLightPosition: { x: -10, y: 5, z: -5 },
+        rimLightEnabled: true,
+        rimLightIntensity: 0.1,     // Rim light (edge glow) - reduced for subtle effect
+        rimLightPosition: { x: -5, y: 10, z: -15 }, // Rim light position
+
         // Debug options
         showBoundingBox: true
     },
@@ -173,7 +193,7 @@ function init() {
     InflatableText.controls.maxDistance = 100;
 
     // Add lighting
-    setupLighting();
+    Lighting.setupLighting();
 
     // Add debug bounding box
     createBoundingBoxDebug();
@@ -248,14 +268,12 @@ function handleMouseMove(event) {
     InflatableText.mousePosition.y = pos.y;
     InflatableText.mousePosition.z = 10; // Keep Z at 10 for good lighting angle
 
-    // Update main light position
-    if (InflatableText.lights.main) {
-        InflatableText.lights.main.position.set(
-            InflatableText.mousePosition.x,
-            InflatableText.mousePosition.y,
-            InflatableText.mousePosition.z
-        );
-    }
+    // Update main light position using Lighting module
+    Lighting.updateMainLightPosition(
+        InflatableText.mousePosition.x,
+        InflatableText.mousePosition.y,
+        InflatableText.mousePosition.z
+    );
 }
 
 // ========== UPDATE CANVAS BOUNDS ==========
@@ -319,30 +337,8 @@ function updateBoundingBoxDebug() {
     debugBoundingBox.visible = InflatableText.settings.showBoundingBox;
 }
 
-// ========== LIGHTING SETUP ==========
-function setupLighting() {
-    // Ambient light for overall illumination
-    InflatableText.lights.ambient = new THREE.AmbientLight(0xffffff, InflatableText.settings.ambientIntensity);
-    InflatableText.scene.add(InflatableText.lights.ambient);
-
-    // Main directional light (key light)
-    InflatableText.lights.main = new THREE.DirectionalLight(0xffffff, InflatableText.settings.mainLightIntensity);
-    InflatableText.lights.main.position.set(10, 20, 10);
-    InflatableText.lights.main.castShadow = true;
-    InflatableText.scene.add(InflatableText.lights.main);
-
-    // Fill light (softer, from opposite side)
-    InflatableText.lights.fill = new THREE.DirectionalLight(0x88ccff, InflatableText.settings.fillLightIntensity);
-    InflatableText.lights.fill.position.set(-10, 5, -5);
-    InflatableText.scene.add(InflatableText.lights.fill);
-
-    // Rim light (for balloon edge glow)
-    InflatableText.lights.rim = new THREE.DirectionalLight(0xffaaff, InflatableText.settings.rimLightIntensity);
-    InflatableText.lights.rim.position.set(0, 0, -10);
-    InflatableText.scene.add(InflatableText.lights.rim);
-}
-
 // ========== BACKGROUND MANAGEMENT ==========
+// Note: Lighting setup now handled by Lighting module (lighting.js)
 function updateSceneBackground() {
     // Remove existing background sprite if any
     if (InflatableText.settings.backgroundImageSprite) {
@@ -446,27 +442,10 @@ function loadFont() {
 }
 
 // ========== BALLOON MATERIAL CREATION ==========
+// Note: Material creation now handled by Materials module (materials.js)
+// Legacy function kept for compatibility - delegates to Materials.createBalloonMaterial()
 function createBalloonMaterial(colorIndex) {
-    // Get color from palette, cycling through if index exceeds palette length
-    const palette = InflatableText.settings.letterColors;
-    const colorHex = palette[colorIndex % palette.length];
-    const color = new THREE.Color(colorHex);
-
-    const material = new THREE.MeshPhysicalMaterial({
-        color: color,
-        metalness: 0.1,
-        roughness: 0.2,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1,
-        reflectivity: 0.9,
-        transparent: true,
-        opacity: 0.9,
-        side: THREE.DoubleSide,
-        envMap: InflatableText.settings.useEnvMap ? InflatableText.settings.environmentMap : null,
-        envMapIntensity: 1.0
-    });
-
-    return material;
+    return Materials.createBalloonMaterial(colorIndex);
 }
 
 // ========== CREATE INDIVIDUAL LETTER MESH ==========
