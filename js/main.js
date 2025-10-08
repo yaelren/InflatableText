@@ -33,7 +33,7 @@ const InflatableText = {
         backgroundImageSprite: null, // Sprite for background image rendering
         environmentMap: null, // Environment map for reflections
         transparentBg: false, // Transparent background option
-        useEnvMap: false, // Use background as environment map
+        useBackgroundAsEnv: false, // Use background color/image as environment map
         bgFillMode: 'fill', // 'fill' or 'fit'
         lightFollowsMouse: false, // Toggle whether light follows mouse
 
@@ -79,6 +79,7 @@ const InflatableText = {
         environmentMapType: 'gradient', // 'gradient', 'solid', 'image'
         environmentMapColor: '#808080', // Solid color for environment
         customEnvironmentMap: null, // Custom uploaded environment map
+        backgroundImageEnvMap: null, // Converted background image for use as environment map
         ambientEnabled: true,
         ambientIntensity: 0.6,      // Overall scene illumination
         mainLightEnabled: true,

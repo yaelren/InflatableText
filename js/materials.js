@@ -96,9 +96,15 @@ const Materials = {
         // Determine which environment map to use
         let envMap = null;
         if (InflatableText.settings.environmentMapEnabled) {
-            if (InflatableText.settings.useEnvMap && InflatableText.settings.backgroundImage) {
-                // Use background image as environment map (from Background section)
-                envMap = InflatableText.settings.backgroundImage;
+            if (InflatableText.settings.useBackgroundAsEnv) {
+                // Priority: Use background color/image as environment map
+                if (InflatableText.settings.backgroundImageEnvMap) {
+                    // Use converted background image as environment map
+                    envMap = InflatableText.settings.backgroundImageEnvMap;
+                } else {
+                    // Use background color as environment map
+                    envMap = Lighting.createSolidColorEnvironmentMap(InflatableText.settings.backgroundColor);
+                }
             } else if (InflatableText.settings.currentEnvironmentMap) {
                 // Use current environment map (based on type: gradient/solid/image)
                 envMap = InflatableText.settings.currentEnvironmentMap;
@@ -203,8 +209,13 @@ const Materials = {
         // Determine which environment map to use
         let envMap = null;
         if (InflatableText.settings.environmentMapEnabled) {
-            if (InflatableText.settings.useEnvMap && InflatableText.settings.backgroundImage) {
-                envMap = InflatableText.settings.backgroundImage;
+            if (InflatableText.settings.useBackgroundAsEnv) {
+                // Priority: Use background color/image as environment map
+                if (InflatableText.settings.backgroundImageEnvMap) {
+                    envMap = InflatableText.settings.backgroundImageEnvMap;
+                } else {
+                    envMap = Lighting.createSolidColorEnvironmentMap(InflatableText.settings.backgroundColor);
+                }
             } else if (InflatableText.settings.currentEnvironmentMap) {
                 envMap = InflatableText.settings.currentEnvironmentMap;
             } else if (InflatableText.settings.environmentMap) {

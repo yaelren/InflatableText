@@ -240,6 +240,19 @@ function setupControls() {
     bgColor.addEventListener('input', (e) => {
         InflatableText.settings.backgroundColor = e.target.value;
         updateSceneBackground();
+
+        // If using background as environment map, update environment map with new color
+        if (InflatableText.settings.useBackgroundAsEnv && !InflatableText.settings.backgroundImage) {
+            Materials.updateAllMaterialsEnvironmentMap();
+        }
+    });
+
+    // Use background as environment map toggle
+    const useBgAsEnv = document.getElementById('use-bg-as-env');
+    useBgAsEnv.addEventListener('change', (e) => {
+        InflatableText.settings.useBackgroundAsEnv = e.target.checked;
+        Materials.updateAllMaterialsEnvironmentMap();
+        console.log(`🌍 Use background as environment map: ${e.target.checked ? 'enabled' : 'disabled'}`);
     });
 
     // Background image upload
@@ -258,16 +271,24 @@ function setupControls() {
                     // Show background image options
                     bgImageOptions.style.display = 'block';
 
-                    // Create environment map from the same texture if enabled
+                    // Convert background image to environment map format (for potential use as env map)
+                    const pmremGenerator = new THREE.PMREMGenerator(InflatableText.renderer);
+                    pmremGenerator.compileEquirectangularShader();
+                    InflatableText.settings.backgroundImageEnvMap = pmremGenerator.fromEquirectangular(texture).texture;
+                    pmremGenerator.dispose();
+
+                    // Create environment map from the same texture if old env map system enabled
                     if (InflatableText.settings.useEnvMap) {
-                        const pmremGenerator = new THREE.PMREMGenerator(InflatableText.renderer);
-                        pmremGenerator.compileEquirectangularShader();
-                        InflatableText.settings.environmentMap = pmremGenerator.fromEquirectangular(texture).texture;
-                        pmremGenerator.dispose();
+                        InflatableText.settings.environmentMap = InflatableText.settings.backgroundImageEnvMap;
                         updateAllMaterialsEnvMap();
                     }
 
                     updateSceneBackground();
+
+                    // If using background as environment map, update environment map with new image
+                    if (InflatableText.settings.useBackgroundAsEnv) {
+                        Materials.updateAllMaterialsEnvironmentMap();
+                    }
                 });
             };
             reader.readAsDataURL(file);
@@ -286,11 +307,17 @@ function setupControls() {
     if (clearBgBtn) {
         clearBgBtn.addEventListener('click', () => {
             InflatableText.settings.backgroundImage = null;
+            InflatableText.settings.backgroundImageEnvMap = null;
             InflatableText.settings.environmentMap = null;
             bgImage.value = ''; // Reset file input
             bgImageOptions.style.display = 'none'; // Hide options
             updateSceneBackground();
             updateAllMaterialsEnvMap();
+
+            // If using background as environment map, update to use solid color
+            if (InflatableText.settings.useBackgroundAsEnv) {
+                Materials.updateAllMaterialsEnvironmentMap();
+            }
         });
     }
 
@@ -299,25 +326,6 @@ function setupControls() {
     transparentBg.addEventListener('change', (e) => {
         InflatableText.settings.transparentBg = e.target.checked;
         updateSceneBackground();
-    });
-
-    // Use background as environment map toggle
-    const useEnvMap = document.getElementById('use-env-map');
-    useEnvMap.addEventListener('change', (e) => {
-        InflatableText.settings.useEnvMap = e.target.checked;
-
-        if (e.target.checked && InflatableText.settings.backgroundImage) {
-            // Create environment map from existing background image
-            const pmremGenerator = new THREE.PMREMGenerator(InflatableText.renderer);
-            pmremGenerator.compileEquirectangularShader();
-            InflatableText.settings.environmentMap = pmremGenerator.fromEquirectangular(InflatableText.settings.backgroundImage).texture;
-            pmremGenerator.dispose();
-        } else {
-            // Clear environment map
-            InflatableText.settings.environmentMap = null;
-        }
-
-        updateAllMaterialsEnvMap();
     });
 
     // Replay button - restart all animations
