@@ -97,6 +97,11 @@ function setupControls() {
     textInput.addEventListener('input', (e) => {
         const text = e.target.value.toUpperCase();
 
+        // If typing animation is playing, don't update letters immediately
+        if (InflatableText.settings.playTypingAnimation) {
+            return;
+        }
+
         // If empty, clear all
         if (!text) {
             InflatableText.letterMeshes.forEach(letterObj => {
@@ -329,13 +334,19 @@ function setupControls() {
     const replayBtn = document.getElementById('replay-btn');
     if (replayBtn) {
         replayBtn.addEventListener('click', () => {
-            InflatableText.letterMeshes.forEach(letterObj => {
-                letterObj.inflation = 0;
-                letterObj.currentBevelThickness = 0;
-                letterObj.currentBevelSize = 0;
-                letterObj.isInflating = true;
-                letterObj.floatTime = 0;
-            });
+            if (InflatableText.settings.playTypingAnimation) {
+                // If typing animation is enabled, restart the typing animation
+                startTypingAnimation();
+            } else {
+                // Otherwise, restart inflation animations for existing letters
+                InflatableText.letterMeshes.forEach(letterObj => {
+                    letterObj.inflation = 0;
+                    letterObj.currentBevelThickness = 0;
+                    letterObj.currentBevelSize = 0;
+                    letterObj.isInflating = true;
+                    letterObj.floatTime = 0;
+                });
+            }
         });
     }
 
@@ -349,6 +360,20 @@ function setupControls() {
     inflationSpeedInput.addEventListener('input', (e) => {
         InflatableText.settings.inflationSpeed = parseFloat(e.target.value);
         inflationSpeed.value = e.target.value;
+    });
+
+    // Play typing animation toggle
+    const playTypingAnimation = document.getElementById('play-typing-animation');
+    playTypingAnimation.addEventListener('change', (e) => {
+        InflatableText.settings.playTypingAnimation = e.target.checked;
+        
+        if (e.target.checked) {
+            // Start typing animation
+            startTypingAnimation();
+        } else {
+            // Stop typing animation
+            stopTypingAnimation();
+        }
     });
 
     // Squish Animation toggle
@@ -656,6 +681,15 @@ function setupControls() {
     const clearBtn = document.getElementById('clear-btn');
     if (clearBtn) {
         clearBtn.addEventListener('click', () => {
+            // Stop typing animation if it's playing
+            if (InflatableText.settings.playTypingAnimation) {
+                stopTypingAnimation();
+                // Uncheck the typing animation toggle
+                const playTypingAnimation = document.getElementById('play-typing-animation');
+                playTypingAnimation.checked = false;
+                InflatableText.settings.playTypingAnimation = false;
+            }
+            
             // Remove all meshes
             InflatableText.letterMeshes.forEach(letterObj => {
                 if (letterObj.mesh) {

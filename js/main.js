@@ -90,7 +90,11 @@ const InflatableText = {
         rimLightPosition: { x: -5, y: 10, z: -15 }, // Rim light position
 
         // Debug options
-        showBoundingBox: true
+        showBoundingBox: true,
+
+        // Typing animation settings
+        playTypingAnimation: false, // Toggle for typing animation
+        typingSpeed: 1.0 // Speed multiplier for typing animation (uses inflation speed)
     },
 
     // Squish animation state
@@ -99,6 +103,15 @@ const InflatableText = {
         direction: 1, // 1 for growing, -1 for shrinking
         currentScaleWidth: 1.0, // Current width scale factor
         currentScaleHeight: 1.0 // Current height scale factor
+    },
+
+    // Typing animation state
+    typingState: {
+        isPlaying: false, // Whether typing animation is currently playing
+        letterQueue: [], // Queue of letters to spawn in order
+        currentLetterIndex: 0, // Index of current letter being spawned
+        lastSpawnTime: 0, // Time when last letter was spawned
+        isLooping: false // Whether to loop the animation
     },
 
     // Store light references for runtime updates
@@ -637,6 +650,147 @@ function updateSquishAnimation(deltaTime) {
     updateCanvasBounds();
 }
 
+// ========== TYPING ANIMATION FUNCTIONS ==========
+function startTypingAnimation() {
+    if (!InflatableText.font) {
+        console.warn('⚠️ Font not loaded yet');
+        return;
+    }
+
+    const textInput = document.getElementById('text-input');
+    const text = textInput.value.toUpperCase();
+    
+    if (!text.trim()) {
+        console.warn('⚠️ No text to animate');
+        return;
+    }
+
+    // Clear existing letters
+    clearAllLetters();
+
+    // Build letter queue from text
+    InflatableText.typingState.letterQueue = [];
+    const lines = text.split('\n');
+    
+    // Calculate grid layout parameters (same as in ui.js)
+    const bounds = InflatableText.canvasBounds;
+    const boxWidth = bounds.maxX - bounds.minX;
+    const boxHeight = bounds.maxY - bounds.minY;
+
+    let letterWidth, letterHeight;
+    if (InflatableText.settings.autoSpacing) {
+        letterWidth = InflatableText.settings.fontSize * 1.2;
+        letterHeight = InflatableText.settings.fontSize * 1.5;
+    } else {
+        const maxLineLength = Math.max(...lines.map(line => line.length));
+        letterWidth = (boxWidth / maxLineLength) * InflatableText.settings.letterSpacing;
+        letterHeight = (boxHeight / lines.length) * InflatableText.settings.lineSpacing;
+    }
+
+    // Calculate total height and center vertically
+    const totalTextHeight = lines.length * letterHeight;
+    const verticalOffset = (boxHeight - totalTextHeight) / 2;
+
+    // Build letter queue with positions
+    lines.forEach((line, rowIndex) => {
+        const lineLength = line.replace(/\s/g, '').length;
+        const lineWidth = lineLength * letterWidth;
+        const centerOffset = (boxWidth - lineWidth) / 2;
+
+        let charIndexInLine = 0;
+        for (let colIndex = 0; colIndex < line.length; colIndex++) {
+            const char = line[colIndex];
+            if (char.trim()) {
+                let x, y;
+                if (InflatableText.settings.randomSpawn) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = InflatableText.settings.spawnRadius;
+                    x = Math.cos(angle) * radius;
+                    y = Math.sin(angle) * radius;
+                } else {
+                    x = bounds.minX + centerOffset + charIndexInLine * letterWidth + letterWidth / 2;
+                    y = bounds.maxY - verticalOffset - rowIndex * letterHeight - letterHeight / 2;
+                }
+
+                InflatableText.typingState.letterQueue.push({
+                    char: char,
+                    x: x,
+                    y: y,
+                    index: InflatableText.typingState.letterQueue.length
+                });
+                charIndexInLine++;
+            }
+        }
+    });
+
+    // Reset typing state
+    InflatableText.typingState.currentLetterIndex = 0;
+    InflatableText.typingState.lastSpawnTime = 0;
+    InflatableText.typingState.isPlaying = true;
+    InflatableText.typingState.isLooping = true;
+
+    console.log(`🎬 Started typing animation with ${InflatableText.typingState.letterQueue.length} letters`);
+}
+
+function stopTypingAnimation() {
+    InflatableText.typingState.isPlaying = false;
+    InflatableText.typingState.isLooping = false;
+    console.log('⏹️ Stopped typing animation');
+}
+
+function updateTypingAnimation(deltaTime) {
+    if (!InflatableText.typingState.isPlaying) return;
+
+    const currentTime = Date.now() / 1000; // Convert to seconds
+    
+    // Calculate spawn delay based on inflation speed
+    // Higher inflation speed = faster inflation = shorter delay between letters
+    // Base delay is 0.8 seconds, adjusted by inflation speed
+    const baseDelay = 0.8; // Base delay in seconds
+    const spawnDelay = baseDelay / InflatableText.settings.inflationSpeed;
+
+    // Check if it's time to spawn the next letter
+    if (currentTime - InflatableText.typingState.lastSpawnTime >= spawnDelay) {
+        const queue = InflatableText.typingState.letterQueue;
+        const currentIndex = InflatableText.typingState.currentLetterIndex;
+
+        if (currentIndex < queue.length) {
+            // Spawn next letter
+            const letterData = queue[currentIndex];
+            const gridPosition = { x: letterData.x, y: letterData.y };
+            const letterObj = createLetterMesh(letterData.char, letterData.index, gridPosition);
+            
+            if (letterObj) {
+                InflatableText.letterMeshes.push(letterObj);
+                InflatableText.typingState.currentLetterIndex++;
+                InflatableText.typingState.lastSpawnTime = currentTime;
+                console.log(`📝 Spawned letter: ${letterData.char} (delay: ${spawnDelay.toFixed(2)}s)`);
+            }
+        } else if (InflatableText.typingState.isLooping) {
+            // Loop back to beginning - clear all letters first
+            clearAllLetters();
+            InflatableText.typingState.currentLetterIndex = 0;
+            InflatableText.typingState.lastSpawnTime = currentTime;
+            console.log('🔄 Looping typing animation');
+        } else {
+            // Animation finished
+            InflatableText.typingState.isPlaying = false;
+            console.log('✅ Typing animation completed');
+        }
+    }
+}
+
+function clearAllLetters() {
+    InflatableText.letterMeshes.forEach(letterObj => {
+        if (letterObj.mesh) {
+            InflatableText.scene.remove(letterObj.mesh);
+            letterObj.mesh.geometry.dispose();
+            letterObj.mesh.material.dispose();
+        }
+    });
+    InflatableText.letterMeshes = [];
+}
+
 // ========== UPDATE ALL LETTERS ==========
 function updateLetters(deltaTime) {
     const bounds = InflatableText.canvasBounds;
@@ -762,6 +916,9 @@ function animate() {
 
     // Update squish animation (animates bounding box size)
     updateSquishAnimation(deltaTime);
+
+    // Update typing animation (spawns letters in sequence)
+    updateTypingAnimation(deltaTime);
 
     // Update all letter animations
     updateLetters(deltaTime);
