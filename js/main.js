@@ -6,7 +6,7 @@
  * - Three.js 3D rendering with custom shader material
  * - GPU-based vertex inflation along normals
  * - Real-time geometry parameter editing
- * - Interactive 3D viewing with OrbitControls
+ * - Fixed camera position for consistent background sizing
  */
 
 // ========== GLOBAL STATE ==========
@@ -14,7 +14,6 @@ const InflatableText = {
     scene: null,
     camera: null,
     renderer: null,
-    controls: null,
     letterMeshes: [], // Array of individual letter objects
     font: null,
     isInitialized: false,
@@ -183,13 +182,7 @@ function init() {
     InflatableText.camera.position.set(0, 0, 30);
     InflatableText.camera.lookAt(0, 0, 0);
 
-    // Setup OrbitControls
-    InflatableText.controls = new THREE.OrbitControls(InflatableText.camera, InflatableText.canvas);
-    InflatableText.controls.enableDamping = true;
-    InflatableText.controls.dampingFactor = 0.05;
-    InflatableText.controls.screenSpacePanning = false;
-    InflatableText.controls.minDistance = 5;
-    InflatableText.controls.maxDistance = 100;
+    // OrbitControls removed - fixed camera position for consistent background sizing
 
     // Add lighting
     Lighting.setupLighting();
@@ -230,6 +223,11 @@ function handleCanvasResize(e) {
     InflatableText.camera.aspect = newWidth / newHeight;
     InflatableText.camera.updateProjectionMatrix();
     updateCanvasBounds();
+    
+    // Update background sprite to match new canvas size
+    if (InflatableText.settings.backgroundImage) {
+        updateSceneBackground();
+    }
 }
 
 function handleWindowResize() {
@@ -241,6 +239,11 @@ function handleWindowResize() {
     InflatableText.camera.aspect = containerWidth / containerHeight;
     InflatableText.camera.updateProjectionMatrix();
     updateCanvasBounds();
+    
+    // Update background sprite to match new canvas size
+    if (InflatableText.settings.backgroundImage) {
+        updateSceneBackground();
+    }
 }
 
 // ========== MOUSE MOVE HANDLING ==========
@@ -362,37 +365,40 @@ function createBackgroundSprite() {
     const texture = InflatableText.settings.backgroundImage;
     if (!texture) return;
 
-    const container = document.getElementById('chatooly-container');
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-    const containerAspect = containerWidth / containerHeight;
+    // Use camera's field of view to calculate proper background size
+    const vFOV = InflatableText.camera.fov * Math.PI / 180;
+    const backgroundZ = -25; // Background plane position
+    const distance = Math.abs(InflatableText.camera.position.z - backgroundZ); // Actual distance from camera to background
+    const visibleHeight = 2 * Math.tan(vFOV / 2) * distance;
+    const visibleWidth = visibleHeight * InflatableText.camera.aspect;
 
     // Get texture dimensions
     const textureAspect = texture.image.width / texture.image.height;
+    const cameraAspect = InflatableText.camera.aspect;
 
     let planeWidth, planeHeight;
 
     if (InflatableText.settings.bgFillMode === 'fill') {
         // Fill mode: cover entire view (may crop image)
-        if (containerAspect > textureAspect) {
-            // Container is wider than image
-            planeWidth = 100;
-            planeHeight = 100 / containerAspect;
+        if (cameraAspect > textureAspect) {
+            // Camera view is wider than image
+            planeWidth = visibleWidth;
+            planeHeight = visibleWidth / textureAspect;
         } else {
-            // Container is taller than image
-            planeHeight = 100;
-            planeWidth = 100 * containerAspect;
+            // Camera view is taller than image
+            planeHeight = visibleHeight;
+            planeWidth = visibleHeight * textureAspect;
         }
     } else {
         // Fit mode: fit entire image (may show letterboxing)
-        if (containerAspect > textureAspect) {
-            // Container is wider than image
-            planeHeight = 100;
-            planeWidth = 100 * (textureAspect / containerAspect);
+        if (cameraAspect > textureAspect) {
+            // Camera view is wider than image
+            planeHeight = visibleHeight;
+            planeWidth = visibleHeight * textureAspect;
         } else {
-            // Container is taller than image
-            planeWidth = 100;
-            planeHeight = 100 / (textureAspect * containerAspect);
+            // Camera view is taller than image
+            planeWidth = visibleWidth;
+            planeHeight = visibleWidth / textureAspect;
         }
     }
 
@@ -405,8 +411,20 @@ function createBackgroundSprite() {
     });
 
     const sprite = new THREE.Mesh(geometry, material);
-    sprite.position.z = -50; // Place behind all letters
+    sprite.position.z = -25; // Place behind all letters but closer to camera
     sprite.renderOrder = -1; // Render first
+
+    // Debug logging
+    console.log('🎨 Background sprite created:', {
+        planeWidth: planeWidth.toFixed(2),
+        planeHeight: planeHeight.toFixed(2),
+        visibleWidth: visibleWidth.toFixed(2),
+        visibleHeight: visibleHeight.toFixed(2),
+        cameraAspect: cameraAspect.toFixed(2),
+        textureAspect: textureAspect.toFixed(2),
+        fillMode: InflatableText.settings.bgFillMode,
+        distance: distance.toFixed(2)
+    });
 
     InflatableText.settings.backgroundImageSprite = sprite;
     InflatableText.scene.add(sprite);
@@ -740,10 +758,7 @@ function animate() {
     const deltaTime = (currentTime - lastTime) / 1000;
     lastTime = currentTime;
 
-    // Update orbit controls
-    if (InflatableText.controls) {
-        InflatableText.controls.update();
-    }
+    // OrbitControls removed - no need to update
 
     // Update squish animation (animates bounding box size)
     updateSquishAnimation(deltaTime);
