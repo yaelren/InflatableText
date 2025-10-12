@@ -263,10 +263,6 @@
                                 <option value="metallic">Metallic</option>
                             </select>
                         </div>
-
-                        <div class="chatooly-control-group">
-                            <button id="apply-material-btn" class="chatooly-button">Apply Material to All Letters</button>
-                        </div>
                     </div>
                 </details>
 
@@ -281,13 +277,6 @@
 
                         <div class="chatooly-control-group">
                             <label>
-                                <input type="checkbox" id="use-bg-as-env">
-                                Use Background as Environment Map
-                            </label>
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label>
                                 <input type="checkbox" id="transparent-bg">
                                 Transparent Background
                             </label>
@@ -296,6 +285,13 @@
                         <div class="chatooly-control-group">
                             <label for="bg-image">Background Image</label>
                             <input type="file" id="bg-image" accept="image/*">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label>
+                                <input type="checkbox" id="use-bg-as-env">
+                                Use Background as Environment Map
+                            </label>
                         </div>
 
                         <!-- Background Image Options (shown only when image is uploaded) -->
@@ -326,31 +322,6 @@
                             </label>
                         </div>
 
-                        <div class="chatooly-control-group">
-                            <label>
-                                <input type="checkbox" id="environment-map-enabled" checked>
-                                Environment Map (Reflections)
-                            </label>
-                        </div>
-
-                        <div class="chatooly-control-group">
-                            <label for="env-map-type">Environment Type</label>
-                            <select id="env-map-type">
-                                <option value="gradient" selected>Gradient (Default)</option>
-                                <option value="solid">Solid Color</option>
-                                <option value="image">Custom Image</option>
-                            </select>
-                        </div>
-
-                        <div class="chatooly-control-group" id="env-color-control" style="display: none;">
-                            <label for="env-color">Environment Color</label>
-                            <input type="color" id="env-color" value="#808080">
-                        </div>
-
-                        <div class="chatooly-control-group" id="env-image-control" style="display: none;">
-                            <label for="env-image">Upload Environment Image</label>
-                            <input type="file" id="env-image" accept="image/*">
-                        </div>
 
                         <!-- Ambient Light -->
                         <div class="chatooly-control-group">

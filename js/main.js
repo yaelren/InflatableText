@@ -74,12 +74,10 @@ const InflatableText = {
         // Material settings
         selectedMaterial: 'helium-latex', // Current material preset (helium-latex, rubber, foil, bubble)
 
-        // Lighting settings
-        environmentMapEnabled: true, // Toggle environment map reflections
-        environmentMapType: 'gradient', // 'gradient', 'solid', 'image'
-        environmentMapColor: '#808080', // Solid color for environment
-        customEnvironmentMap: null, // Custom uploaded environment map
+        // Environment Map settings (simplified)
         backgroundImageEnvMap: null, // Converted background image for use as environment map
+
+        // Lighting settings
         ambientEnabled: true,
         ambientIntensity: 0.6,      // Overall scene illumination
         mainLightEnabled: true,

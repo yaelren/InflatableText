@@ -95,22 +95,17 @@ const Materials = {
 
         // Determine which environment map to use
         let envMap = null;
-        if (InflatableText.settings.environmentMapEnabled) {
-            if (InflatableText.settings.useBackgroundAsEnv) {
-                // Priority: Use background color/image as environment map
-                if (InflatableText.settings.backgroundImageEnvMap) {
-                    // Use converted background image as environment map
-                    envMap = InflatableText.settings.backgroundImageEnvMap;
-                } else {
-                    // Use background color as environment map
-                    envMap = Lighting.createSolidColorEnvironmentMap(InflatableText.settings.backgroundColor);
-                }
-            } else if (InflatableText.settings.currentEnvironmentMap) {
-                // Use current environment map (based on type: gradient/solid/image)
-                envMap = InflatableText.settings.currentEnvironmentMap;
-            } else if (InflatableText.settings.environmentMap) {
-                // Fallback to default gradient environment map
-                envMap = InflatableText.settings.environmentMap;
+        if (InflatableText.settings.useBackgroundAsEnv) {
+            // Auto-detect background type and use appropriate environment map
+            if (InflatableText.settings.transparentBg) {
+                // Transparent background - no environment map
+                envMap = null;
+            } else if (InflatableText.settings.backgroundImage && InflatableText.settings.backgroundImageEnvMap) {
+                // Background image - use converted image as environment map
+                envMap = InflatableText.settings.backgroundImageEnvMap;
+            } else {
+                // Solid color background - create solid color environment map
+                envMap = Materials.createSolidColorEnvironmentMap(InflatableText.settings.backgroundColor);
             }
         }
 
@@ -176,51 +171,32 @@ const Materials = {
     },
 
     /**
-     * Toggle environment map on/off for all materials
-     * @param {boolean} enabled - Whether environment map should be enabled
-     */
-    toggleEnvironmentMap: function(enabled) {
-        InflatableText.settings.environmentMapEnabled = enabled;
-
-        // Update all existing letter materials
-        InflatableText.letterMeshes.forEach((letterObj) => {
-            if (letterObj.mesh && letterObj.mesh.material) {
-                let envMap = null;
-                if (enabled) {
-                    if (InflatableText.settings.useEnvMap && InflatableText.settings.backgroundImage) {
-                        envMap = InflatableText.settings.backgroundImage;
-                    } else if (InflatableText.settings.environmentMap) {
-                        envMap = InflatableText.settings.environmentMap;
-                    }
-                }
-                letterObj.mesh.material.envMap = envMap;
-                letterObj.mesh.material.needsUpdate = true;
-            }
-        });
-
-        console.log(`🌍 Environment map ${enabled ? 'enabled' : 'disabled'}`);
-    },
-
-    /**
      * Update environment map on all existing materials
-     * Called when environment map type/color changes
+     * Simple logic: if useBackgroundAsEnv is true, use background as environment map
      */
     updateAllMaterialsEnvironmentMap: function() {
         // Determine which environment map to use
         let envMap = null;
-        if (InflatableText.settings.environmentMapEnabled) {
-            if (InflatableText.settings.useBackgroundAsEnv) {
-                // Priority: Use background color/image as environment map
-                if (InflatableText.settings.backgroundImageEnvMap) {
-                    envMap = InflatableText.settings.backgroundImageEnvMap;
-                } else {
-                    envMap = Lighting.createSolidColorEnvironmentMap(InflatableText.settings.backgroundColor);
-                }
-            } else if (InflatableText.settings.currentEnvironmentMap) {
-                envMap = InflatableText.settings.currentEnvironmentMap;
-            } else if (InflatableText.settings.environmentMap) {
-                envMap = InflatableText.settings.environmentMap;
+        
+        if (InflatableText.settings.useBackgroundAsEnv) {
+            // Auto-detect background type and use appropriate environment map
+            if (InflatableText.settings.transparentBg) {
+                // Transparent background - no environment map
+                envMap = null;
+                console.log('🌍 Background is transparent - no environment map');
+            } else if (InflatableText.settings.backgroundImage && InflatableText.settings.backgroundImageEnvMap) {
+                // Background image - use converted image as environment map
+                envMap = InflatableText.settings.backgroundImageEnvMap;
+                console.log('🌍 Using background image as environment map');
+            } else {
+                // Solid color background - create solid color environment map
+                envMap = Materials.createSolidColorEnvironmentMap(InflatableText.settings.backgroundColor);
+                console.log(`🌍 Using background color as environment map: ${InflatableText.settings.backgroundColor}`);
             }
+        } else {
+            // Checkbox unchecked - no environment map
+            envMap = null;
+            console.log('🌍 Environment map disabled');
         }
 
         // Update all existing letter materials
@@ -232,6 +208,28 @@ const Materials = {
         });
 
         console.log('🔄 Environment map updated on all materials');
+    },
+
+    /**
+     * Create a solid color environment map
+     * @param {string} color - Hex color for environment
+     */
+    createSolidColorEnvironmentMap: function(color) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+
+        // Fill with solid color
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, 512, 512);
+
+        // Convert to texture
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        texture.needsUpdate = true;
+
+        return texture;
     }
 };
 

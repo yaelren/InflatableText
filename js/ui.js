@@ -241,7 +241,7 @@ function setupControls() {
         InflatableText.settings.backgroundColor = e.target.value;
         updateSceneBackground();
 
-        // If using background as environment map, update environment map with new color
+        // If using background as environment map and no background image, update environment map with new color
         if (InflatableText.settings.useBackgroundAsEnv && !InflatableText.settings.backgroundImage) {
             Materials.updateAllMaterialsEnvironmentMap();
         }
@@ -271,17 +271,11 @@ function setupControls() {
                     // Show background image options
                     bgImageOptions.style.display = 'block';
 
-                    // Convert background image to environment map format (for potential use as env map)
+                    // Convert background image to environment map format
                     const pmremGenerator = new THREE.PMREMGenerator(InflatableText.renderer);
                     pmremGenerator.compileEquirectangularShader();
                     InflatableText.settings.backgroundImageEnvMap = pmremGenerator.fromEquirectangular(texture).texture;
                     pmremGenerator.dispose();
-
-                    // Create environment map from the same texture if old env map system enabled
-                    if (InflatableText.settings.useEnvMap) {
-                        InflatableText.settings.environmentMap = InflatableText.settings.backgroundImageEnvMap;
-                        updateAllMaterialsEnvMap();
-                    }
 
                     updateSceneBackground();
 
@@ -308,11 +302,9 @@ function setupControls() {
         clearBgBtn.addEventListener('click', () => {
             InflatableText.settings.backgroundImage = null;
             InflatableText.settings.backgroundImageEnvMap = null;
-            InflatableText.settings.environmentMap = null;
             bgImage.value = ''; // Reset file input
             bgImageOptions.style.display = 'none'; // Hide options
             updateSceneBackground();
-            updateAllMaterialsEnvMap();
 
             // If using background as environment map, update to use solid color
             if (InflatableText.settings.useBackgroundAsEnv) {
@@ -326,6 +318,11 @@ function setupControls() {
     transparentBg.addEventListener('change', (e) => {
         InflatableText.settings.transparentBg = e.target.checked;
         updateSceneBackground();
+
+        // If using background as environment map, update environment map
+        if (InflatableText.settings.useBackgroundAsEnv) {
+            Materials.updateAllMaterialsEnvironmentMap();
+        }
     });
 
     // Replay button - restart all animations
@@ -613,55 +610,6 @@ function setupControls() {
         InflatableText.settings.lightFollowsMouse = e.target.checked;
     });
 
-    // Environment map toggle
-    const environmentMapEnabled = document.getElementById('environment-map-enabled');
-    if (environmentMapEnabled) {
-        environmentMapEnabled.addEventListener('change', (e) => {
-            Materials.toggleEnvironmentMap(e.target.checked);
-        });
-    }
-
-    // Environment map type
-    const envMapType = document.getElementById('env-map-type');
-    const envColorControl = document.getElementById('env-color-control');
-    const envImageControl = document.getElementById('env-image-control');
-
-    if (envMapType) {
-        envMapType.addEventListener('change', (e) => {
-            const type = e.target.value;
-            InflatableText.settings.environmentMapType = type;
-
-            // Show/hide controls based on type
-            envColorControl.style.display = type === 'solid' ? 'block' : 'none';
-            envImageControl.style.display = type === 'image' ? 'block' : 'none';
-
-            // Update environment map
-            Lighting.updateEnvironmentMapType();
-        });
-    }
-
-    // Environment color
-    const envColor = document.getElementById('env-color');
-    if (envColor) {
-        envColor.addEventListener('input', (e) => {
-            InflatableText.settings.environmentMapColor = e.target.value;
-            if (InflatableText.settings.environmentMapType === 'solid') {
-                Lighting.updateEnvironmentMapType();
-            }
-        });
-    }
-
-    // Environment image upload
-    const envImage = document.getElementById('env-image');
-    if (envImage) {
-        envImage.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                Lighting.loadCustomEnvironmentMap(file);
-            }
-        });
-    }
-
     // Bounding box visibility toggle
     const showBoundingBox = document.getElementById('show-bounding-box');
     showBoundingBox.addEventListener('change', (e) => {
@@ -819,15 +767,6 @@ function updateAllMaterials() {
     });
 }
 
-// ========== UPDATE ENVIRONMENT MAP ON ALL MATERIALS ==========
-function updateAllMaterialsEnvMap() {
-    InflatableText.letterMeshes.forEach(letterObj => {
-        if (letterObj.mesh && letterObj.mesh.material) {
-            letterObj.mesh.material.envMap = InflatableText.settings.useEnvMap ? InflatableText.settings.environmentMap : null;
-            letterObj.mesh.material.needsUpdate = true;
-        }
-    });
-}
 
 // ========== MATERIAL PRESET CONTROLS ==========
 function setupMaterialControls() {
@@ -837,13 +776,8 @@ function setupMaterialControls() {
         materialPresetSelect.addEventListener('change', (e) => {
             InflatableText.settings.selectedMaterial = e.target.value;
             console.log(`🎨 Material changed to: ${e.target.value}`);
-        });
-    }
-
-    // Apply material to all letters button
-    const applyMaterialBtn = document.getElementById('apply-material-btn');
-    if (applyMaterialBtn) {
-        applyMaterialBtn.addEventListener('click', () => {
+            
+            // Automatically apply the new material to all letters
             Materials.applyMaterialToAllLetters();
         });
     }

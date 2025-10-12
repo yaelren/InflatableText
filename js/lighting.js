@@ -80,11 +80,6 @@ const Lighting = {
             InflatableText.settings.environmentMap = texture;
         }
 
-        // Also set as current environment map initially
-        if (!InflatableText.settings.currentEnvironmentMap) {
-            InflatableText.settings.currentEnvironmentMap = texture;
-        }
-
         console.log('✅ Default environment map created');
     },
 
@@ -170,97 +165,6 @@ const Lighting = {
             InflatableText.lights.rim.visible = toggles.rim;
             InflatableText.settings.rimLightEnabled = toggles.rim;
         }
-    },
-
-    /**
-     * Create a solid color environment map
-     * @param {string} color - Hex color for environment
-     */
-    createSolidColorEnvironmentMap: function(color) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 512;
-        const ctx = canvas.getContext('2d');
-
-        // Fill with solid color
-        ctx.fillStyle = color;
-        ctx.fillRect(0, 0, 512, 512);
-
-        // Convert to texture
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.mapping = THREE.EquirectangularReflectionMapping;
-        texture.needsUpdate = true;
-
-        return texture;
-    },
-
-    /**
-     * Load custom image as environment map
-     * @param {File} file - Image file to use as environment
-     */
-    loadCustomEnvironmentMap: function(file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.onload = function() {
-                const texture = new THREE.Texture(img);
-                texture.mapping = THREE.EquirectangularReflectionMapping;
-                texture.needsUpdate = true;
-
-                InflatableText.settings.customEnvironmentMap = texture;
-                InflatableText.settings.currentEnvironmentMap = texture;
-
-                // Update all materials to use new environment map
-                Materials.updateAllMaterialsEnvironmentMap();
-
-                console.log('✅ Custom environment map loaded and applied');
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    },
-
-    /**
-     * Update environment map based on current type setting
-     */
-    updateEnvironmentMapType: function() {
-        const type = InflatableText.settings.environmentMapType;
-        console.log(`🔄 Updating environment map type to: ${type}`);
-
-        let newEnvMap = null;
-
-        switch(type) {
-            case 'gradient':
-                // Use default gradient environment map
-                newEnvMap = InflatableText.settings.environmentMap;
-                console.log('📊 Using gradient environment map');
-                break;
-            case 'solid':
-                // Create solid color environment map
-                const color = InflatableText.settings.environmentMapColor;
-                newEnvMap = Lighting.createSolidColorEnvironmentMap(color);
-                console.log(`🎨 Created solid color environment map: ${color}`);
-                break;
-            case 'image':
-                // Use custom uploaded image, or null if none uploaded yet
-                if (InflatableText.settings.customEnvironmentMap) {
-                    newEnvMap = InflatableText.settings.customEnvironmentMap;
-                    console.log('🖼️ Using custom uploaded image environment map');
-                } else {
-                    newEnvMap = null; // No environment map until image is uploaded
-                    console.log('⚠️ No custom image uploaded yet - no environment map');
-                }
-                break;
-        }
-
-        // Store the new environment map
-        InflatableText.settings.currentEnvironmentMap = newEnvMap;
-        console.log('✅ Environment map stored, updating materials...');
-
-        // Update all materials
-        Materials.updateAllMaterialsEnvironmentMap();
-
-        console.log(`🌍 Environment map type changed to: ${type}`);
     }
 };
 
