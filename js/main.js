@@ -32,7 +32,7 @@ const InflatableText = {
         backgroundImageSprite: null, // Sprite for background image rendering
         environmentMap: null, // Environment map for reflections
         transparentBg: false, // Transparent background option
-        useBackgroundAsEnv: true, // Use background color/image as environment map (always enabled)
+        useBackgroundAsEnv: false, // Use background color/image as environment map (optional)
         bgFillMode: 'fill', // 'fill' or 'fit'
         lightFollowsMouse: false, // Toggle whether light follows mouse
 

@@ -172,22 +172,19 @@
 
                         <div class="chatooly-control-group">
                             <label for="bg-image">Background Image</label>
-                            <input type="file" id="bg-image" accept="image/*">
+                            <input type="file" id="bg-image" accept="image/*" style="display: none;">
+                            <button id="bg-image-btn" class="chatooly-button" onclick="document.getElementById('bg-image').click()">Choose File</button>
+                            <div id="bg-image-filename" style="display: none; margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                                <span id="bg-image-name" style="flex: 1; font-size: 12px; color: var(--text-secondary);"></span>
+                                <button id="clear-bg-btn" style="background: none; border: none; color: var(--text-primary); cursor: pointer; font-size: 18px; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">×</button>
+                            </div>
                         </div>
 
-                        <!-- Background Image Options (shown only when image is uploaded) -->
-                        <div id="bg-image-options" style="display: none;">
-                            <div class="chatooly-control-group">
-                                <label for="bg-fill-mode">Background Fill Mode</label>
-                                <select id="bg-fill-mode">
-                                    <option value="fill">Fill (may crop)</option>
-                                    <option value="fit">Fit (no stretch)</option>
-                                </select>
-                            </div>
-
-                            <div class="chatooly-control-group">
-                                <button id="clear-bg-btn" class="chatooly-button">Clear Background Image</button>
-                            </div>
+                        <div class="chatooly-control-group">
+                            <label>
+                                <input type="checkbox" id="use-bg-as-env">
+                                Use Background as Environment Map
+                            </label>
                         </div>
                     </div>
                 </details>

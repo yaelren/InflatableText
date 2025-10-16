@@ -255,19 +255,21 @@ function setupControls() {
 
     // Background image upload
     const bgImage = document.getElementById('bg-image');
-    const bgImageOptions = document.getElementById('bg-image-options');
+    const bgImageFilename = document.getElementById('bg-image-filename');
+    const bgImageName = document.getElementById('bg-image-name');
 
     bgImage.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
+            // Show filename with 'x' button
+            bgImageName.textContent = file.name;
+            bgImageFilename.style.display = 'flex';
+
             const reader = new FileReader();
             reader.onload = (event) => {
                 const loader = new THREE.TextureLoader();
                 loader.load(event.target.result, (texture) => {
                     InflatableText.settings.backgroundImage = texture;
-
-                    // Show background image options
-                    bgImageOptions.style.display = 'block';
 
                     // Convert background image to environment map format
                     const pmremGenerator = new THREE.PMREMGenerator(InflatableText.renderer);
@@ -275,37 +277,42 @@ function setupControls() {
                     InflatableText.settings.backgroundImageEnvMap = pmremGenerator.fromEquirectangular(texture).texture;
                     pmremGenerator.dispose();
 
+                    // Background fill mode is always 'fill' (no need to set, already default)
                     updateSceneBackground();
 
-                    // Always update environment map with new image (environment map is always enabled)
-                    Materials.updateAllMaterialsEnvironmentMap();
+                    // Update environment map if enabled
+                    if (InflatableText.settings.useBackgroundAsEnv) {
+                        Materials.updateAllMaterialsEnvironmentMap();
+                    }
                 });
             };
             reader.readAsDataURL(file);
         }
     });
 
-    // Background fill mode
-    const bgFillMode = document.getElementById('bg-fill-mode');
-    bgFillMode.addEventListener('change', (e) => {
-        InflatableText.settings.bgFillMode = e.target.value;
-        updateSceneBackground();
-    });
-
-    // Clear background image
+    // Clear background image (x button)
     const clearBgBtn = document.getElementById('clear-bg-btn');
     if (clearBgBtn) {
         clearBgBtn.addEventListener('click', () => {
             InflatableText.settings.backgroundImage = null;
             InflatableText.settings.backgroundImageEnvMap = null;
             bgImage.value = ''; // Reset file input
-            bgImageOptions.style.display = 'none'; // Hide options
+            bgImageFilename.style.display = 'none'; // Hide filename display
             updateSceneBackground();
 
             // If using background as environment map, update to use solid color
             if (InflatableText.settings.useBackgroundAsEnv) {
                 Materials.updateAllMaterialsEnvironmentMap();
             }
+        });
+    }
+
+    // Use background as environment map toggle
+    const useBgAsEnv = document.getElementById('use-bg-as-env');
+    if (useBgAsEnv) {
+        useBgAsEnv.addEventListener('change', (e) => {
+            InflatableText.settings.useBackgroundAsEnv = e.target.checked;
+            Materials.updateAllMaterialsEnvironmentMap();
         });
     }
 
