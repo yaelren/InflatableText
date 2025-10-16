@@ -747,14 +747,83 @@ function updateAllMaterials() {
 function setupMaterialControls() {
     // Material preset dropdown
     const materialPresetSelect = document.getElementById('material-preset');
+    const matcapUploadGroup = document.getElementById('matcap-upload-group');
 
     if (materialPresetSelect) {
         materialPresetSelect.addEventListener('change', (e) => {
             InflatableText.settings.selectedMaterial = e.target.value;
             console.log(`🎨 Material changed to: ${e.target.value}`);
 
+            // Show/hide matcap upload controls
+            if (matcapUploadGroup) {
+                matcapUploadGroup.style.display = (e.target.value === 'custom-matcap') ? 'block' : 'none';
+            }
+
             // Automatically apply the new material to all letters
             Materials.applyMaterialToAllLetters();
+        });
+    }
+
+    // Matcap texture upload
+    const matcapTexture = document.getElementById('matcap-texture');
+    const matcapTextureFilename = document.getElementById('matcap-texture-filename');
+    const matcapTextureName = document.getElementById('matcap-texture-name');
+
+    if (matcapTexture) {
+        matcapTexture.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                // Show filename with 'x' button
+                matcapTextureName.textContent = file.name;
+                matcapTextureFilename.style.display = 'flex';
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const textureLoader = new THREE.TextureLoader();
+                    textureLoader.load(event.target.result, (texture) => {
+                        InflatableText.settings.customMatcapTexture = texture;
+                        console.log('✅ Custom matcap texture loaded');
+
+                        // Apply to all letters if custom-matcap is selected
+                        if (InflatableText.settings.selectedMaterial === 'custom-matcap') {
+                            Materials.applyMaterialToAllLetters();
+                        }
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    // Clear matcap texture button
+    const clearMatcapBtn = document.getElementById('clear-matcap-btn');
+    if (clearMatcapBtn) {
+        clearMatcapBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Clear the texture
+            if (InflatableText.settings.customMatcapTexture) {
+                InflatableText.settings.customMatcapTexture.dispose();
+                InflatableText.settings.customMatcapTexture = null;
+            }
+
+            // Reset file input
+            if (matcapTexture) {
+                matcapTexture.value = '';
+            }
+
+            // Hide filename display
+            if (matcapTextureFilename) {
+                matcapTextureFilename.style.display = 'none';
+            }
+
+            console.log('🗑️ Custom matcap texture cleared');
+
+            // Reapply materials
+            if (InflatableText.settings.selectedMaterial === 'custom-matcap') {
+                Materials.applyMaterialToAllLetters();
+            }
         });
     }
 }

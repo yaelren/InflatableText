@@ -148,7 +148,19 @@
                     <select id="material-preset">
                         <option value="helium-latex" selected>Helium Latex</option>
                         <option value="helium-foil">Helium Foil</option>
+                        <option value="custom-matcap">Custom Matcap</option>
                     </select>
+                </div>
+
+                <!-- Custom Matcap Upload (shown only when Custom Matcap is selected) -->
+                <div class="chatooly-control-group" id="matcap-upload-group" style="display: none;">
+                    <label for="matcap-texture">Matcap Texture</label>
+                    <input type="file" id="matcap-texture" accept="image/*" style="display: none;">
+                    <button id="matcap-texture-btn" class="chatooly-button" onclick="document.getElementById('matcap-texture').click()">Choose Matcap File</button>
+                    <div id="matcap-texture-filename" style="display: none; margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                        <span id="matcap-texture-name" style="flex: 1; font-size: 12px; color: var(--text-secondary);"></span>
+                        <button id="clear-matcap-btn" style="background: none; border: none; color: var(--text-primary); cursor: pointer; font-size: 18px; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">×</button>
+                    </div>
                 </div>
 
                 <!-- Background -->

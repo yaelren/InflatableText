@@ -71,7 +71,8 @@ const InflatableText = {
         letterColors: ['#ff6b9d', '#c44569', '#4a69bd'],
 
         // Material settings
-        selectedMaterial: 'helium-latex', // Current material preset (helium-latex, helium-foil)
+        selectedMaterial: 'helium-latex', // Current material preset (helium-latex, helium-foil, custom-matcap)
+        customMatcapTexture: null, // Custom uploaded matcap texture
 
         // Environment Map settings (simplified)
         backgroundImageEnvMap: null, // Converted background image for use as environment map

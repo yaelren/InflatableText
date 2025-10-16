@@ -16,9 +16,9 @@ const MATERIAL_PRESETS = {
         clearcoat: 0.8,
         clearcoatRoughness: 0.15,
         reflectivity: 0.9,
-        opacity: 0.5,  // More transparent
+        opacity: 0.68,  // More transparent
         envMapIntensity: 1.0,
-        transmission: 0.5,  // Increased transparency
+        transmission: 0.35,  // Increased transparency
         useBackgroundEnv: true
     },
     'helium-foil': {
@@ -26,6 +26,12 @@ const MATERIAL_PRESETS = {
         description: 'Reflective foil balloon with matcap shading',
         type: 'matcap',
         matcapPath: 'assets/foil-matcap.jpg'
+    },
+    'custom-matcap': {
+        name: 'Custom Matcap',
+        description: 'Upload your own matcap texture',
+        type: 'matcap',
+        useCustomTexture: true
     }
 };
 
@@ -60,8 +66,14 @@ const Materials = {
                 side: THREE.DoubleSide
             };
 
-            // Load matcap texture if path is provided
-            if (preset.matcapPath) {
+            // Load matcap texture based on preset type
+            if (preset.useCustomTexture) {
+                // Use custom uploaded texture
+                if (InflatableText.settings.customMatcapTexture) {
+                    matcapOptions.matcap = InflatableText.settings.customMatcapTexture;
+                }
+            } else if (preset.matcapPath) {
+                // Load from file path
                 const textureLoader = new THREE.TextureLoader();
                 matcapOptions.matcap = textureLoader.load(preset.matcapPath);
             }
