@@ -71,7 +71,7 @@ const InflatableText = {
         letterColors: ['#ff6b9d', '#c44569', '#4a69bd'],
 
         // Material settings
-        selectedMaterial: 'helium-latex', // Current material preset (helium-latex, rubber, foil, bubble)
+        selectedMaterial: 'helium-latex', // Current material preset (helium-latex, helium-foil, bubble, metallic-bg-aware)
 
         // Environment Map settings (simplified)
         backgroundImageEnvMap: null, // Converted background image for use as environment map

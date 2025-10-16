@@ -20,29 +20,11 @@ const MATERIAL_PRESETS = {
         envMapIntensity: 1.0,
         transmission: 0.1
     },
-    'rubber': {
-        name: 'Rubber Balloon',
-        description: 'Matte finish party balloon',
-        metalness: 0.0,
-        roughness: 0.5,
-        clearcoat: 0.3,
-        clearcoatRoughness: 0.3,
-        reflectivity: 0.5,
-        opacity: 0.9,
-        envMapIntensity: 0.5,
-        transmission: 0.0
-    },
-    'foil': {
-        name: 'Foil/Mylar',
-        description: 'Shiny metallic balloon with mirror-like finish',
-        metalness: 0.85,
-        roughness: 0.1,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.05,
-        reflectivity: 1.0,
-        opacity: 1.0,
-        envMapIntensity: 1.5,
-        transmission: 0.0
+    'helium-foil': {
+        name: 'Helium Foil',
+        description: 'Reflective foil balloon with matcap shading',
+        type: 'matcap',
+        matcapPath: 'assets/foil-matcap.png'
     },
     'bubble': {
         name: 'Clear Bubble',
@@ -56,9 +38,9 @@ const MATERIAL_PRESETS = {
         envMapIntensity: 1.2,
         transmission: 0.8
     },
-    'metallic': {
-        name: 'Metallic',
-        description: 'Pure metallic opaque finish',
+    'metallic-bg-aware': {
+        name: 'Metallic (Background Aware)',
+        description: 'Metallic finish that reflects background',
         metalness: 1.0,
         roughness: 0.2,
         clearcoat: 0.5,
@@ -76,7 +58,7 @@ const Materials = {
      * Create a balloon material with specified color and material preset
      * @param {number} colorIndex - Index for color palette cycling
      * @param {string} materialType - Material preset key (default: from settings)
-     * @returns {THREE.MeshPhysicalMaterial} Material instance
+     * @returns {THREE.MeshPhysicalMaterial|THREE.MeshMatcapMaterial} Material instance
      */
     createBalloonMaterial: function(colorIndex, materialType = null) {
         // Use provided material type or fall back to current setting
@@ -92,6 +74,24 @@ const Materials = {
         const palette = InflatableText.settings.letterColors;
         const colorHex = palette[colorIndex % palette.length];
         const color = new THREE.Color(colorHex);
+
+        // Check if this is a matcap material
+        if (preset.type === 'matcap') {
+            // Create MeshMatcapMaterial
+            const matcapOptions = {
+                color: color,
+                side: THREE.DoubleSide
+            };
+
+            // Load matcap texture if path is provided
+            if (preset.matcapPath) {
+                const textureLoader = new THREE.TextureLoader();
+                matcapOptions.matcap = textureLoader.load(preset.matcapPath);
+            }
+
+            const material = new THREE.MeshMatcapMaterial(matcapOptions);
+            return material;
+        }
 
         // Determine which environment map to use
         let envMap = null;

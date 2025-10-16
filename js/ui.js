@@ -747,11 +747,12 @@ function updateAllMaterials() {
 function setupMaterialControls() {
     // Material preset dropdown
     const materialPresetSelect = document.getElementById('material-preset');
+
     if (materialPresetSelect) {
         materialPresetSelect.addEventListener('change', (e) => {
             InflatableText.settings.selectedMaterial = e.target.value;
             console.log(`🎨 Material changed to: ${e.target.value}`);
-            
+
             // Automatically apply the new material to all letters
             Materials.applyMaterialToAllLetters();
         });
