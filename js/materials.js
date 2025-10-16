@@ -16,15 +16,16 @@ const MATERIAL_PRESETS = {
         clearcoat: 0.8,
         clearcoatRoughness: 0.15,
         reflectivity: 0.9,
-        opacity: 0.85,
+        opacity: 0.7,  // More translucent (was 0.85)
         envMapIntensity: 1.0,
-        transmission: 0.1
+        transmission: 0.3,  // Increased transparency (was 0.1)
+        useBackgroundEnv: true
     },
     'helium-foil': {
         name: 'Helium Foil',
         description: 'Reflective foil balloon with matcap shading',
         type: 'matcap',
-        matcapPath: 'assets/foil-matcap.png'
+        matcapPath: 'assets/foil-matcap.jpg'
     },
     'bubble': {
         name: 'Clear Bubble',
@@ -36,7 +37,8 @@ const MATERIAL_PRESETS = {
         reflectivity: 0.9,
         opacity: 0.4,
         envMapIntensity: 1.2,
-        transmission: 0.8
+        transmission: 0.8,
+        useBackgroundEnv: false  // Don't use background as environment map
     },
     'metallic-bg-aware': {
         name: 'Metallic (Background Aware)',
@@ -48,7 +50,8 @@ const MATERIAL_PRESETS = {
         reflectivity: 1.0,
         opacity: 1.0,
         envMapIntensity: 2.0,
-        transmission: 0.0
+        transmission: 0.0,
+        useBackgroundEnv: false  // Don't use background as environment map
     }
 };
 
@@ -95,7 +98,10 @@ const Materials = {
 
         // Determine which environment map to use
         let envMap = null;
-        if (InflatableText.settings.useBackgroundAsEnv) {
+        // Check if this material should use background as environment map
+        const shouldUseBackgroundEnv = preset.useBackgroundEnv !== false; // Default to true if not specified
+
+        if (InflatableText.settings.useBackgroundAsEnv && shouldUseBackgroundEnv) {
             // Auto-detect background type and use appropriate environment map
             if (InflatableText.settings.transparentBg) {
                 // Transparent background - no environment map
