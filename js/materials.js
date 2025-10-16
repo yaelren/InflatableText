@@ -26,32 +26,6 @@ const MATERIAL_PRESETS = {
         description: 'Reflective foil balloon with matcap shading',
         type: 'matcap',
         matcapPath: 'assets/foil-matcap.jpg'
-    },
-    'bubble': {
-        name: 'Clear Bubble',
-        description: 'Transparent glass-like balloon',
-        metalness: 0.0,
-        roughness: 0.05,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.0,
-        reflectivity: 0.9,
-        opacity: 0.4,
-        envMapIntensity: 1.2,
-        transmission: 0.8,
-        useBackgroundEnv: false  // Don't use background as environment map
-    },
-    'metallic-bg-aware': {
-        name: 'Metallic (Background Aware)',
-        description: 'Metallic finish that reflects background',
-        metalness: 1.0,
-        roughness: 0.2,
-        clearcoat: 0.5,
-        clearcoatRoughness: 0.1,
-        reflectivity: 1.0,
-        opacity: 1.0,
-        envMapIntensity: 2.0,
-        transmission: 0.0,
-        useBackgroundEnv: false  // Don't use background as environment map
     }
 };
 
