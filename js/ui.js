@@ -252,13 +252,6 @@ function setupControls() {
         }
     });
 
-    // Use background as environment map toggle
-    const useBgAsEnv = document.getElementById('use-bg-as-env');
-    useBgAsEnv.addEventListener('change', (e) => {
-        InflatableText.settings.useBackgroundAsEnv = e.target.checked;
-        Materials.updateAllMaterialsEnvironmentMap();
-        console.log(`🌍 Use background as environment map: ${e.target.checked ? 'enabled' : 'disabled'}`);
-    });
 
     // Background image upload
     const bgImage = document.getElementById('bg-image');
@@ -284,10 +277,8 @@ function setupControls() {
 
                     updateSceneBackground();
 
-                    // If using background as environment map, update environment map with new image
-                    if (InflatableText.settings.useBackgroundAsEnv) {
-                        Materials.updateAllMaterialsEnvironmentMap();
-                    }
+                    // Always update environment map with new image (environment map is always enabled)
+                    Materials.updateAllMaterialsEnvironmentMap();
                 });
             };
             reader.readAsDataURL(file);
@@ -330,25 +321,6 @@ function setupControls() {
         }
     });
 
-    // Replay button - restart all animations
-    const replayBtn = document.getElementById('replay-btn');
-    if (replayBtn) {
-        replayBtn.addEventListener('click', () => {
-            if (InflatableText.settings.playTypingAnimation) {
-                // If typing animation is enabled, restart the typing animation
-                startTypingAnimation();
-            } else {
-                // Otherwise, restart inflation animations for existing letters
-                InflatableText.letterMeshes.forEach(letterObj => {
-                    letterObj.inflation = 0;
-                    letterObj.currentBevelThickness = 0;
-                    letterObj.currentBevelSize = 0;
-                    letterObj.isInflating = true;
-                    letterObj.floatTime = 0;
-                });
-            }
-        });
-    }
 
     // Inflation speed
     const inflationSpeed = document.getElementById('inflation-speed');
@@ -499,44 +471,62 @@ function setupControls() {
         }
     });
 
-    // Automatic spacing toggle
-    const autoSpacing = document.getElementById('auto-spacing');
+    // Spacing mode radio buttons
+    const spacingRandom = document.getElementById('spacing-random');
+    const spacingAutomatic = document.getElementById('spacing-automatic');
+    const spacingManual = document.getElementById('spacing-manual');
     const letterSpacing = document.getElementById('letter-spacing');
     const letterSpacingInput = document.getElementById('letter-spacing-input');
     const lineSpacing = document.getElementById('line-spacing');
     const lineSpacingInput = document.getElementById('line-spacing-input');
 
     function updateSpacingControlsState() {
-        const isAuto = InflatableText.settings.autoSpacing;
-        letterSpacing.disabled = isAuto;
-        letterSpacingInput.disabled = isAuto;
-        lineSpacing.disabled = isAuto;
-        lineSpacingInput.disabled = isAuto;
+        const letterSpacingGroup = document.getElementById('letter-spacing-group');
+        const lineSpacingGroup = document.getElementById('line-spacing-group');
 
-        // Grey out labels
-        letterSpacing.style.opacity = isAuto ? '0.5' : '1';
-        letterSpacingInput.style.opacity = isAuto ? '0.5' : '1';
-        lineSpacing.style.opacity = isAuto ? '0.5' : '1';
-        lineSpacingInput.style.opacity = isAuto ? '0.5' : '1';
+        // Show manual spacing controls only when Manual is selected
+        if (spacingManual.checked) {
+            letterSpacingGroup.style.display = 'block';
+            lineSpacingGroup.style.display = 'block';
+        } else {
+            letterSpacingGroup.style.display = 'none';
+            lineSpacingGroup.style.display = 'none';
+        }
     }
 
-    autoSpacing.addEventListener('change', (e) => {
-        InflatableText.settings.autoSpacing = e.target.checked;
-        updateSpacingControlsState();
-        // Trigger text input update to recalculate positions
-        const textInput = document.getElementById('text-input');
-        textInput.dispatchEvent(new Event('input'));
+    // Radio button change handlers
+    spacingRandom.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            InflatableText.settings.randomSpawn = true;
+            InflatableText.settings.autoSpacing = false;
+            updateSpacingControlsState();
+        }
+    });
+
+    spacingAutomatic.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            InflatableText.settings.randomSpawn = false;
+            InflatableText.settings.autoSpacing = true;
+            updateSpacingControlsState();
+            // Trigger text input update to recalculate positions
+            const textInput = document.getElementById('text-input');
+            textInput.dispatchEvent(new Event('input'));
+        }
+    });
+
+    spacingManual.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            InflatableText.settings.randomSpawn = false;
+            InflatableText.settings.autoSpacing = false;
+            updateSpacingControlsState();
+            // Trigger text input update to recalculate positions
+            const textInput = document.getElementById('text-input');
+            textInput.dispatchEvent(new Event('input'));
+        }
     });
 
     // Initialize spacing controls state
     updateSpacingControlsState();
-
-    // Random spawn toggle
-    const randomSpawn = document.getElementById('random-spawn');
-    randomSpawn.addEventListener('change', (e) => {
-        InflatableText.settings.randomSpawn = e.target.checked;
-        // Note: Don't trigger text update here - only affects new letters from now on
-    });
 
     // Letter spacing (already declared above)
     letterSpacing.addEventListener('input', (e) => {
@@ -570,67 +560,7 @@ function setupControls() {
         textInput.dispatchEvent(new Event('input'));
     });
 
-    // Boundary padding
-    const boundaryPadding = document.getElementById('boundary-padding');
-    const boundaryPaddingInput = document.getElementById('boundary-padding-input');
-    boundaryPadding.addEventListener('input', (e) => {
-        InflatableText.settings.boundaryPadding = parseFloat(e.target.value);
-        boundaryPaddingInput.value = e.target.value;
-        updateCanvasBounds();
-    });
-    boundaryPaddingInput.addEventListener('input', (e) => {
-        InflatableText.settings.boundaryPadding = parseFloat(e.target.value);
-        boundaryPadding.value = e.target.value;
-        updateCanvasBounds();
-    });
 
-    // Spawn radius
-    const spawnRadius = document.getElementById('spawn-radius');
-    const spawnRadiusInput = document.getElementById('spawn-radius-input');
-    spawnRadius.addEventListener('input', (e) => {
-        InflatableText.settings.spawnRadius = parseFloat(e.target.value);
-        spawnRadiusInput.value = e.target.value;
-    });
-    spawnRadiusInput.addEventListener('input', (e) => {
-        InflatableText.settings.spawnRadius = parseFloat(e.target.value);
-        spawnRadius.value = e.target.value;
-    });
-
-    // Gravity
-    const gravity = document.getElementById('gravity');
-    const gravityInput = document.getElementById('gravity-input');
-    gravity.addEventListener('input', (e) => {
-        InflatableText.settings.gravity = parseFloat(e.target.value);
-        gravityInput.value = e.target.value;
-    });
-    gravityInput.addEventListener('input', (e) => {
-        InflatableText.settings.gravity = parseFloat(e.target.value);
-        gravity.value = e.target.value;
-    });
-
-    // Bounciness
-    const bounciness = document.getElementById('bounciness');
-    const bouncinessInput = document.getElementById('bounciness-input');
-    bounciness.addEventListener('input', (e) => {
-        InflatableText.settings.bounciness = parseFloat(e.target.value);
-        bouncinessInput.value = e.target.value;
-    });
-    bouncinessInput.addEventListener('input', (e) => {
-        InflatableText.settings.bounciness = parseFloat(e.target.value);
-        bounciness.value = e.target.value;
-    });
-
-    // Collider size
-    const colliderSize = document.getElementById('collider-size');
-    const colliderSizeInput = document.getElementById('collider-size-input');
-    colliderSize.addEventListener('input', (e) => {
-        InflatableText.settings.colliderSize = parseFloat(e.target.value);
-        colliderSizeInput.value = e.target.value;
-    });
-    colliderSizeInput.addEventListener('input', (e) => {
-        InflatableText.settings.colliderSize = parseFloat(e.target.value);
-        colliderSize.value = e.target.value;
-    });
 
     // Color palette controls
     setupColorPalette();
@@ -638,14 +568,6 @@ function setupControls() {
     // Material preset controls
     setupMaterialControls();
 
-    // Lighting intensity controls
-    setupLightingControls();
-
-    // Light follows mouse toggle
-    const lightFollowsMouse = document.getElementById('light-follows-mouse');
-    lightFollowsMouse.addEventListener('change', (e) => {
-        InflatableText.settings.lightFollowsMouse = e.target.checked;
-    });
 
     // Bounding box visibility toggle
     const showBoundingBox = document.getElementById('show-bounding-box');
