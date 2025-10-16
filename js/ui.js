@@ -366,7 +366,7 @@ function setupControls() {
     const playTypingAnimation = document.getElementById('play-typing-animation');
     playTypingAnimation.addEventListener('change', (e) => {
         InflatableText.settings.playTypingAnimation = e.target.checked;
-        
+
         if (e.target.checked) {
             // Start typing animation
             startTypingAnimation();
@@ -374,6 +374,18 @@ function setupControls() {
             // Stop typing animation
             stopTypingAnimation();
         }
+    });
+
+    // Typing speed control
+    const typingSpeed = document.getElementById('typing-speed');
+    const typingSpeedInput = document.getElementById('typing-speed-input');
+    typingSpeed.addEventListener('input', (e) => {
+        InflatableText.settings.typingSpeed = parseFloat(e.target.value);
+        typingSpeedInput.value = e.target.value;
+    });
+    typingSpeedInput.addEventListener('input', (e) => {
+        InflatableText.settings.typingSpeed = parseFloat(e.target.value);
+        typingSpeed.value = e.target.value;
     });
 
     // Squish Animation toggle

@@ -94,7 +94,7 @@ const InflatableText = {
 
         // Typing animation settings
         playTypingAnimation: false, // Toggle for typing animation
-        typingSpeed: 1.0 // Speed multiplier for typing animation (uses inflation speed)
+        typingSpeed: 0.1 // Delay between letters in seconds (independent from inflation speed)
     },
 
     // Squish animation state
@@ -742,12 +742,9 @@ function updateTypingAnimation(deltaTime) {
     if (!InflatableText.typingState.isPlaying) return;
 
     const currentTime = Date.now() / 1000; // Convert to seconds
-    
-    // Calculate spawn delay based on inflation speed
-    // Higher inflation speed = faster inflation = shorter delay between letters
-    // Base delay is 0.8 seconds, adjusted by inflation speed
-    const baseDelay = 0.8; // Base delay in seconds
-    const spawnDelay = baseDelay / InflatableText.settings.inflationSpeed;
+
+    // Use typing speed setting for delay between letters (independent from inflation speed)
+    const spawnDelay = InflatableText.settings.typingSpeed;
 
     // Check if it's time to spawn the next letter
     if (currentTime - InflatableText.typingState.lastSpawnTime >= spawnDelay) {
