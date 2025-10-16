@@ -16,9 +16,9 @@ const MATERIAL_PRESETS = {
         clearcoat: 0.8,
         clearcoatRoughness: 0.15,
         reflectivity: 0.9,
-        opacity: 0.7,  // More translucent (was 0.85)
+        opacity: 0.5,  // More transparent
         envMapIntensity: 1.0,
-        transmission: 0.3,  // Increased transparency (was 0.1)
+        transmission: 0.5,  // Increased transparency
         useBackgroundEnv: true
     },
     'helium-foil': {
