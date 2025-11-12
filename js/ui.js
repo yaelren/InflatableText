@@ -467,6 +467,10 @@ function setupControls() {
             const textInput = document.getElementById('text-input');
             textInput.dispatchEvent(new Event('input'));
         }
+        // Update clock digit positions if clock mode is active
+        if (window.ClockMode && window.ClockMode.isActive()) {
+            window.ClockMode.updatePositions();
+        }
     });
     fontSizeInput.addEventListener('input', (e) => {
         InflatableText.settings.fontSize = parseFloat(e.target.value);
@@ -475,6 +479,10 @@ function setupControls() {
         if (InflatableText.settings.autoSpacing) {
             const textInput = document.getElementById('text-input');
             textInput.dispatchEvent(new Event('input'));
+        }
+        // Update clock digit positions if clock mode is active
+        if (window.ClockMode && window.ClockMode.isActive()) {
+            window.ClockMode.updatePositions();
         }
     });
 
@@ -542,6 +550,10 @@ function setupControls() {
         // Trigger text input update to recalculate positions
         const textInput = document.getElementById('text-input');
         textInput.dispatchEvent(new Event('input'));
+        // Update clock digit positions if clock mode is active
+        if (window.ClockMode && window.ClockMode.isActive()) {
+            window.ClockMode.updatePositions();
+        }
     });
     letterSpacingInput.addEventListener('input', (e) => {
         InflatableText.settings.letterSpacing = parseFloat(e.target.value);
@@ -549,6 +561,10 @@ function setupControls() {
         // Trigger text input update to recalculate positions
         const textInput = document.getElementById('text-input');
         textInput.dispatchEvent(new Event('input'));
+        // Update clock digit positions if clock mode is active
+        if (window.ClockMode && window.ClockMode.isActive()) {
+            window.ClockMode.updatePositions();
+        }
     });
 
     // Line spacing (already declared above)
@@ -630,7 +646,7 @@ function setupControls() {
                 playTypingAnimation.checked = false;
                 InflatableText.settings.playTypingAnimation = false;
             }
-            
+
             // Remove all meshes
             InflatableText.letterMeshes.forEach(letterObj => {
                 if (letterObj.mesh) {
@@ -642,6 +658,235 @@ function setupControls() {
             InflatableText.letterMeshes = [];
             InflatableText.nextLetterX = -20;
             textInput.value = "";
+        });
+    }
+
+    // Clock Mode button - toggles clock mode
+    const clockModeBtn = document.getElementById('clock-mode-btn');
+    const clockSettingsCard = document.getElementById('clock-settings-card');
+
+    if (clockModeBtn) {
+        clockModeBtn.addEventListener('click', () => {
+            if (window.ClockMode.isActive()) {
+                // Exit clock mode
+                window.ClockMode.stop();
+                clockModeBtn.textContent = 'Enter Clock Mode';
+                // Hide clock settings card
+                if (clockSettingsCard) {
+                    clockSettingsCard.style.display = 'none';
+                }
+            } else {
+                // Enter clock mode
+                window.ClockMode.init();
+                clockModeBtn.textContent = 'Exit Clock Mode';
+                // Show clock settings card
+                if (clockSettingsCard) {
+                    clockSettingsCard.style.display = 'block';
+                    clockSettingsCard.setAttribute('open', ''); // Auto-open the card
+                }
+            }
+        });
+    }
+
+    // Clock Settings - Font Size
+    const clockFontSize = document.getElementById('clock-font-size');
+    const clockFontSizeInput = document.getElementById('clock-font-size-input');
+    if (clockFontSize) {
+        clockFontSize.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.clockFontSize = parseFloat(e.target.value);
+                clockFontSizeInput.value = e.target.value;
+                // Update digit positions with new font size
+                window.ClockMode.updatePositions();
+            }
+        });
+        clockFontSizeInput.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.clockFontSize = parseFloat(e.target.value);
+                clockFontSize.value = e.target.value;
+                // Update digit positions with new font size
+                window.ClockMode.updatePositions();
+            }
+        });
+    }
+
+    // Clock Settings - Push Force
+    const clockPushForce = document.getElementById('clock-push-force');
+    const clockPushForceInput = document.getElementById('clock-push-force-input');
+    if (clockPushForce) {
+        clockPushForce.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.pushForce = parseFloat(e.target.value);
+                clockPushForceInput.value = e.target.value;
+            }
+        });
+        clockPushForceInput.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.pushForce = parseFloat(e.target.value);
+                clockPushForce.value = e.target.value;
+            }
+        });
+    }
+
+    // Clock Settings - Gravity
+    const clockGravity = document.getElementById('clock-gravity');
+    const clockGravityInput = document.getElementById('clock-gravity-input');
+    if (clockGravity) {
+        clockGravity.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.gravity = parseFloat(e.target.value);
+                clockGravityInput.value = e.target.value;
+            }
+        });
+        clockGravityInput.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.gravity = parseFloat(e.target.value);
+                clockGravity.value = e.target.value;
+            }
+        });
+    }
+
+    // Clock Settings - Bounciness
+    const clockBounciness = document.getElementById('clock-bounciness');
+    const clockBouncinessInput = document.getElementById('clock-bounciness-input');
+    if (clockBounciness) {
+        clockBounciness.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.bounciness = parseFloat(e.target.value);
+                clockBouncinessInput.value = e.target.value;
+            }
+        });
+        clockBouncinessInput.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.bounciness = parseFloat(e.target.value);
+                clockBounciness.value = e.target.value;
+            }
+        });
+    }
+
+    // Clock Settings - Collision Strength
+    const clockCollision = document.getElementById('clock-collision');
+    const clockCollisionInput = document.getElementById('clock-collision-input');
+    if (clockCollision) {
+        clockCollision.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.collisionStrength = parseFloat(e.target.value);
+                clockCollisionInput.value = e.target.value;
+            }
+        });
+        clockCollisionInput.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.collisionStrength = parseFloat(e.target.value);
+                clockCollision.value = e.target.value;
+            }
+        });
+    }
+
+    // Clock Settings - Opacity
+    const clockOpacity = document.getElementById('clock-opacity');
+    const clockOpacityInput = document.getElementById('clock-opacity-input');
+    if (clockOpacity) {
+        clockOpacity.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.opacity = parseFloat(e.target.value);
+                clockOpacityInput.value = e.target.value;
+            }
+        });
+        clockOpacityInput.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.opacity = parseFloat(e.target.value);
+                clockOpacity.value = e.target.value;
+            }
+        });
+    }
+
+    // Clock Settings - Gravity Sway Amplitude
+    const clockGravitySway = document.getElementById('clock-gravity-sway');
+    const clockGravitySwayInput = document.getElementById('clock-gravity-sway-input');
+    if (clockGravitySway) {
+        clockGravitySway.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.gravitySway = parseFloat(e.target.value);
+                clockGravitySwayInput.value = e.target.value;
+            }
+        });
+        clockGravitySwayInput.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.gravitySway = parseFloat(e.target.value);
+                clockGravitySway.value = e.target.value;
+            }
+        });
+    }
+
+    // Clock Settings - Gravity Sway Speed
+    const clockGravitySwaySpeed = document.getElementById('clock-gravity-sway-speed');
+    const clockGravitySwaySpeedInput = document.getElementById('clock-gravity-sway-speed-input');
+    if (clockGravitySwaySpeed) {
+        clockGravitySwaySpeed.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.gravitySwaySpeed = parseFloat(e.target.value);
+                clockGravitySwaySpeedInput.value = e.target.value;
+            }
+        });
+        clockGravitySwaySpeedInput.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.gravitySwaySpeed = parseFloat(e.target.value);
+                clockGravitySwaySpeed.value = e.target.value;
+            }
+        });
+    }
+
+    // Clock Settings - Scale Start
+    const clockScaleStart = document.getElementById('clock-scale-start');
+    const clockScaleStartInput = document.getElementById('clock-scale-start-input');
+    if (clockScaleStart) {
+        clockScaleStart.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.scaleStart = parseFloat(e.target.value);
+                clockScaleStartInput.value = e.target.value;
+            }
+        });
+        clockScaleStartInput.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.scaleStart = parseFloat(e.target.value);
+                clockScaleStart.value = e.target.value;
+            }
+        });
+    }
+
+    // Clock Settings - Scale End
+    const clockScaleEnd = document.getElementById('clock-scale-end');
+    const clockScaleEndInput = document.getElementById('clock-scale-end-input');
+    if (clockScaleEnd) {
+        clockScaleEnd.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.scaleEnd = parseFloat(e.target.value);
+                clockScaleEndInput.value = e.target.value;
+            }
+        });
+        clockScaleEndInput.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.scaleEnd = parseFloat(e.target.value);
+                clockScaleEnd.value = e.target.value;
+            }
+        });
+    }
+
+    // Clock Settings - Scale Shrink Speed
+    const clockScaleShrinkSpeed = document.getElementById('clock-scale-shrink-speed');
+    const clockScaleShrinkSpeedInput = document.getElementById('clock-scale-shrink-speed-input');
+    if (clockScaleShrinkSpeed) {
+        clockScaleShrinkSpeed.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.scaleShrinkSpeed = parseFloat(e.target.value);
+                clockScaleShrinkSpeedInput.value = e.target.value;
+            }
+        });
+        clockScaleShrinkSpeedInput.addEventListener('input', (e) => {
+            if (window.ClockMode) {
+                window.ClockMode.oldDigitSettings.scaleShrinkSpeed = parseFloat(e.target.value);
+                clockScaleShrinkSpeed.value = e.target.value;
+            }
         });
     }
 }

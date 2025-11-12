@@ -59,6 +59,70 @@
         .chatooly-category .chatooly-control-group:last-child {
             margin-bottom: 0;
         }
+
+        /* Match Chatooly component demo card styling */
+        .chatooly-category {
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            margin-bottom: 0;
+        }
+
+        /* Categories as section cards */
+        .chatooly-category {
+            background: var(--chatooly-color-accent-bg, #d9e5d7);
+            border-radius: 8px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .chatooly-category summary {
+            background: transparent;
+            color: #6D736C;
+            font-weight: 400;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 12px 15px;
+            transition: color 0.2s;
+        }
+
+        .chatooly-category summary:hover {
+            color: #454545;
+        }
+
+        .chatooly-category[open] summary {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .chatooly-category-content {
+            background: var(--chatooly-color-accent-bg, #d9e5d7);
+        }
+
+        /* Individual control groups styling */
+        .chatooly-control-group {
+            margin-bottom: 15px;
+        }
+
+        .chatooly-control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Text colors */
+        .chatooly-controls-panel label,
+        .chatooly-control-group label {
+            color: #000000 !important;
+        }
+
+        .chatooly-controls-header p {
+            color: #000000 !important;
+        }
+
+        /* Radio button labels */
+        .chatooly-controls-panel input[type="radio"] + label,
+        .chatooly-controls-panel label[style*="display: flex"] {
+            color: #000000 !important;
+        }
     </style>
 </head>
 <body>
@@ -79,55 +143,144 @@
             <div class="chatooly-controls-content">
                 <!-- ========== EDIT BELOW: Add Your Tool Controls Here ========== -->
 
-                <!-- Text Input -->
-                <div class="chatooly-control-group">
-                    <label for="text-input">Bubble Letters</label>
-                    <textarea id="text-input" placeholder="Loading font..." rows="4" disabled></textarea>
-                </div>
+                <!-- Text & Controls Card -->
+                <details class="chatooly-category" open>
+                    <summary>Text & Controls</summary>
+                    <div class="chatooly-category-content">
+                        <!-- Text Input -->
+                        <div class="chatooly-control-group">
+                            <label for="text-input">Bubble Letters</label>
+                            <textarea id="text-input" placeholder="Loading font..." rows="4" disabled></textarea>
+                        </div>
 
-                <!-- Clear All Button (right after text input) -->
-                <div class="chatooly-control-group">
-                    <button id="clear-btn" class="chatooly-button">Clear All</button>
-                </div>
+                        <!-- Clear All Button -->
+                        <div class="chatooly-control-group">
+                            <button id="clear-btn" class="chatooly-button">Clear All</button>
+                        </div>
 
-                <!-- Font Size -->
-                <div class="chatooly-control-group">
-                    <label for="font-size">Font Size</label>
-                    <input type="range" id="font-size" min="5" max="30" step="1" value="5">
-                    <input type="number" id="font-size-input" min="5" max="30" step="1" value="5">
-                </div>
-
-                <!-- Spacing Mode (Radio Buttons) -->
-                <div class="chatooly-control-group">
-                    <label>Positioning</label>
-                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <input type="radio" name="spacing-mode" id="spacing-random" value="random">
-                            Random
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <input type="radio" name="spacing-mode" id="spacing-automatic" value="automatic" checked>
-                            Automatic
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <input type="radio" name="spacing-mode" id="spacing-manual" value="manual">
-                            Manual
-                        </label>
+                        <!-- Clock Mode Toggle -->
+                        <div class="chatooly-control-group">
+                            <button id="clock-mode-btn" class="chatooly-button">Enter Clock Mode</button>
+                        </div>
                     </div>
-                </div>
+                </details>
 
-                <!-- Manual Spacing Controls (shown only when Manual is selected) -->
-                <div class="chatooly-control-group" id="letter-spacing-group" style="display: none;">
-                    <label for="letter-spacing">Letter Spacing</label>
-                    <input type="range" id="letter-spacing" min="0.1" max="2" step="0.05" value="0.3">
-                    <input type="number" id="letter-spacing-input" min="0.1" max="2" step="0.05" value="0.3">
-                </div>
+                <!-- Clock Settings Card -->
+                <details class="chatooly-category" id="clock-settings-card" style="display: none;">
+                    <summary>Clock Settings</summary>
+                    <div class="chatooly-category-content">
+                        <div class="chatooly-control-group">
+                            <label for="clock-font-size">Clock Font Size</label>
+                            <input type="range" id="clock-font-size" min="5" max="30" step="1" value="15">
+                            <input type="number" id="clock-font-size-input" min="5" max="30" step="1" value="15">
+                        </div>
 
-                <div class="chatooly-control-group" id="line-spacing-group" style="display: none;">
-                    <label for="line-spacing">Line Spacing</label>
-                    <input type="range" id="line-spacing" min="0.1" max="2" step="0.05" value="0.3">
-                    <input type="number" id="line-spacing-input" min="0.1" max="2" step="0.05" value="0.3">
-                </div>
+                        <div class="chatooly-control-group">
+                            <label for="clock-push-force">Push Force</label>
+                            <input type="range" id="clock-push-force" min="0.01" max="1" step="0.01" value="0.07">
+                            <input type="number" id="clock-push-force-input" min="0.01" max="1" step="0.01" value="0.07">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="clock-gravity">Base Gravity</label>
+                            <input type="range" id="clock-gravity" min="-1" max="1" step="0.05" value="0">
+                            <input type="number" id="clock-gravity-input" min="-1" max="1" step="0.05" value="0">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="clock-gravity-sway">Gravity Sway Amplitude</label>
+                            <input type="range" id="clock-gravity-sway" min="0" max="1" step="0.05" value="0.1">
+                            <input type="number" id="clock-gravity-sway-input" min="0" max="1" step="0.05" value="0.1">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="clock-gravity-sway-speed">Gravity Sway Speed</label>
+                            <input type="range" id="clock-gravity-sway-speed" min="0.1" max="5" step="0.1" value="1.0">
+                            <input type="number" id="clock-gravity-sway-speed-input" min="0.1" max="5" step="0.1" value="1.0">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="clock-bounciness">Bounciness</label>
+                            <input type="range" id="clock-bounciness" min="0" max="1" step="0.05" value="0">
+                            <input type="number" id="clock-bounciness-input" min="0" max="1" step="0.05" value="0">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="clock-collision">Collision Strength</label>
+                            <input type="range" id="clock-collision" min="0" max="1" step="0.05" value="0">
+                            <input type="number" id="clock-collision-input" min="0" max="1" step="0.05" value="0">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="clock-opacity">Opacity</label>
+                            <input type="range" id="clock-opacity" min="0.1" max="1" step="0.05" value="0.9">
+                            <input type="number" id="clock-opacity-input" min="0.1" max="1" step="0.05" value="0.9">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="clock-scale-start">Scale Start</label>
+                            <input type="range" id="clock-scale-start" min="0.1" max="2" step="0.05" value="1.0">
+                            <input type="number" id="clock-scale-start-input" min="0.1" max="2" step="0.05" value="1.0">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="clock-scale-end">Scale End</label>
+                            <input type="range" id="clock-scale-end" min="0" max="1" step="0.05" value="0">
+                            <input type="number" id="clock-scale-end-input" min="0" max="1" step="0.05" value="0">
+                        </div>
+
+                        <div class="chatooly-control-group">
+                            <label for="clock-scale-shrink-speed">Scale Shrink Speed</label>
+                            <input type="range" id="clock-scale-shrink-speed" min="0.05" max="2" step="0.05" value="0.2">
+                            <input type="number" id="clock-scale-shrink-speed-input" min="0.05" max="2" step="0.05" value="0.2">
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Typography Card -->
+                <details class="chatooly-category" open>
+                    <summary>Typography</summary>
+                    <div class="chatooly-category-content">
+                        <!-- Font Size -->
+                        <div class="chatooly-control-group">
+                            <label for="font-size">Font Size</label>
+                            <input type="range" id="font-size" min="5" max="30" step="1" value="5">
+                            <input type="number" id="font-size-input" min="5" max="30" step="1" value="5">
+                        </div>
+
+                        <!-- Spacing Mode (Radio Buttons) -->
+                        <div class="chatooly-control-group">
+                            <label>Positioning</label>
+                            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="radio" name="spacing-mode" id="spacing-random" value="random">
+                                    Random
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="radio" name="spacing-mode" id="spacing-automatic" value="automatic" checked>
+                                    Automatic
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="radio" name="spacing-mode" id="spacing-manual" value="manual">
+                                    Manual
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Manual Spacing Controls (shown only when Manual is selected) -->
+                        <div class="chatooly-control-group" id="letter-spacing-group" style="display: none;">
+                            <label for="letter-spacing">Letter Spacing</label>
+                            <input type="range" id="letter-spacing" min="0.1" max="2" step="0.05" value="0.3">
+                            <input type="number" id="letter-spacing-input" min="0.1" max="2" step="0.05" value="0.3">
+                        </div>
+
+                        <div class="chatooly-control-group" id="line-spacing-group" style="display: none;">
+                            <label for="line-spacing">Line Spacing</label>
+                            <input type="range" id="line-spacing" min="0.1" max="2" step="0.05" value="0.3">
+                            <input type="number" id="line-spacing-input" min="0.1" max="2" step="0.05" value="0.3">
+                        </div>
+                    </div>
+                </details>
 
                 <!-- Letter Colors -->
                 <details class="chatooly-category" open>
@@ -142,26 +295,31 @@
                     </div>
                 </details>
 
-                <!-- Material (flat, no category) -->
-                <div class="chatooly-control-group">
-                    <label for="material-preset">Bubble Material</label>
-                    <select id="material-preset">
-                        <option value="helium-latex" selected>Helium Latex</option>
-                        <option value="helium-foil">Helium Foil</option>
-                        <option value="custom-matcap">Custom Matcap</option>
-                    </select>
-                </div>
+                <!-- Material Card -->
+                <details class="chatooly-category" open>
+                    <summary>Material</summary>
+                    <div class="chatooly-category-content">
+                        <div class="chatooly-control-group">
+                            <label for="material-preset">Bubble Material</label>
+                            <select id="material-preset">
+                                <option value="helium-latex" selected>Helium Latex</option>
+                                <option value="helium-foil">Helium Foil</option>
+                                <option value="custom-matcap">Custom Matcap</option>
+                            </select>
+                        </div>
 
-                <!-- Custom Matcap Upload (shown only when Custom Matcap is selected) -->
-                <div class="chatooly-control-group" id="matcap-upload-group" style="display: none;">
-                    <label for="matcap-texture">Matcap Texture</label>
-                    <input type="file" id="matcap-texture" accept="image/*" style="display: none;">
-                    <button id="matcap-texture-btn" class="chatooly-button" onclick="document.getElementById('matcap-texture').click()">Choose Matcap File</button>
-                    <div id="matcap-texture-filename" style="display: none; margin-top: 8px; display: flex; align-items: center; gap: 8px;">
-                        <span id="matcap-texture-name" style="flex: 1; font-size: 12px; color: var(--text-secondary);"></span>
-                        <button id="clear-matcap-btn" style="background: none; border: none; color: var(--text-primary); cursor: pointer; font-size: 18px; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">×</button>
+                        <!-- Custom Matcap Upload (shown only when Custom Matcap is selected) -->
+                        <div class="chatooly-control-group" id="matcap-upload-group" style="display: none;">
+                            <label for="matcap-texture">Matcap Texture</label>
+                            <input type="file" id="matcap-texture" accept="image/*" style="display: none;">
+                            <button id="matcap-texture-btn" class="chatooly-button" onclick="document.getElementById('matcap-texture').click()">Choose Matcap File</button>
+                            <div id="matcap-texture-filename" style="display: none; margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                                <span id="matcap-texture-name" style="flex: 1; font-size: 12px; color: var(--text-secondary);"></span>
+                                <button id="clear-matcap-btn" style="background: none; border: none; color: var(--text-primary); cursor: pointer; font-size: 18px; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">×</button>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </details>
 
                 <!-- Background -->
                 <details class="chatooly-category">
@@ -336,6 +494,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FontLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/TextGeometry.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <!-- ========== OPENTYPE.JS FOR CUSTOM FONTS ========== -->
     <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
@@ -352,6 +511,7 @@
     <script src="js/lighting.js"></script>
     <script src="js/materials.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/clock.js"></script>
     <script src="js/ui.js"></script>
 </body>
 </html>

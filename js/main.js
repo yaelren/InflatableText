@@ -14,6 +14,7 @@ const InflatableText = {
     scene: null,
     camera: null,
     renderer: null,
+    controls: null,
     letterMeshes: [], // Array of individual letter objects
     font: null,
     isInitialized: false,
@@ -196,7 +197,13 @@ function init() {
     InflatableText.camera.position.set(0, 0, 30);
     InflatableText.camera.lookAt(0, 0, 0);
 
-    // OrbitControls removed - fixed camera position for consistent background sizing
+    // Setup OrbitControls for camera movement
+    InflatableText.controls = new THREE.OrbitControls(InflatableText.camera, InflatableText.canvas);
+    InflatableText.controls.enableDamping = true; // Smooth camera movement
+    InflatableText.controls.dampingFactor = 0.05;
+    InflatableText.controls.screenSpacePanning = false;
+    InflatableText.controls.minDistance = 10;
+    InflatableText.controls.maxDistance = 100;
 
     // Add lighting
     Lighting.setupLighting();
@@ -821,8 +828,54 @@ function updateLetters(deltaTime) {
         }
 
         // PHYSICS (gravity and boundary collision)
+        // Skip physics for static letters (e.g., current clock digits)
+        if (letterObj.isStatic) {
+            // Static letters don't move - just update mesh position
+            letterObj.mesh.position.x = letterObj.position.x;
+            letterObj.mesh.position.y = letterObj.position.y;
+            return; // Skip rest of physics
+        }
+
+        // Determine gravity and bounciness based on letter type
+        let gravity = InflatableText.settings.gravity;
+        let bounciness = InflatableText.settings.bounciness;
+
+        // Flying clock digits use special settings with gravity sway
+        if (letterObj.isFlyingDigit && window.ClockMode && window.ClockMode.isActive && window.ClockMode.isActive() && window.ClockMode.oldDigitSettings) {
+            const settings = window.ClockMode.oldDigitSettings;
+
+            // Calculate gravity with sine wave sway
+            const time = Date.now() / 1000; // Current time in seconds
+            const swayOffset = Math.sin(time * settings.gravitySwaySpeed * Math.PI * 2) * settings.gravitySway;
+            gravity = settings.gravity + swayOffset;
+
+            bounciness = settings.bounciness;
+
+            // Handle scale-over-time shrinking
+            if (letterObj.birthTime && letterObj.mesh) {
+                const age = (Date.now() - letterObj.birthTime) / 1000; // Age in seconds
+                const scaleRange = settings.scaleStart - settings.scaleEnd;
+                const scaleProgress = Math.min(age * settings.scaleShrinkSpeed / scaleRange, 1);
+                const currentScale = settings.scaleStart - (scaleRange * scaleProgress);
+
+                letterObj.mesh.scale.set(currentScale, currentScale, currentScale);
+
+                // Destroy when fully shrunk
+                if (currentScale <= settings.scaleEnd) {
+                    InflatableText.scene.remove(letterObj.mesh);
+                    letterObj.mesh.geometry.dispose();
+                    letterObj.mesh.material.dispose();
+                    const index = InflatableText.letterMeshes.indexOf(letterObj);
+                    if (index > -1) {
+                        InflatableText.letterMeshes.splice(index, 1);
+                    }
+                    return; // Skip rest of physics for destroyed letter
+                }
+            }
+        }
+
         // Apply gravity
-        letterObj.velocity.y -= InflatableText.settings.gravity * deltaTime * 60;
+        letterObj.velocity.y -= gravity * deltaTime * 60;
 
         // Update position
         letterObj.position.x += letterObj.velocity.x * deltaTime * 60;
@@ -831,18 +884,18 @@ function updateLetters(deltaTime) {
         // Boundary collision with bounce
         if (letterObj.position.x < bounds.minX) {
             letterObj.position.x = bounds.minX;
-            letterObj.velocity.x = Math.abs(letterObj.velocity.x) * InflatableText.settings.bounciness;
+            letterObj.velocity.x = Math.abs(letterObj.velocity.x) * bounciness;
         } else if (letterObj.position.x > bounds.maxX) {
             letterObj.position.x = bounds.maxX;
-            letterObj.velocity.x = -Math.abs(letterObj.velocity.x) * InflatableText.settings.bounciness;
+            letterObj.velocity.x = -Math.abs(letterObj.velocity.x) * bounciness;
         }
 
         if (letterObj.position.y < bounds.minY) {
             letterObj.position.y = bounds.minY;
-            letterObj.velocity.y = Math.abs(letterObj.velocity.y) * InflatableText.settings.bounciness;
+            letterObj.velocity.y = Math.abs(letterObj.velocity.y) * bounciness;
         } else if (letterObj.position.y > bounds.maxY) {
             letterObj.position.y = bounds.maxY;
-            letterObj.velocity.y = -Math.abs(letterObj.velocity.y) * InflatableText.settings.bounciness;
+            letterObj.velocity.y = -Math.abs(letterObj.velocity.y) * bounciness;
         }
 
         // Update mesh position
@@ -855,6 +908,9 @@ function updateLetters(deltaTime) {
         for (let j = i + 1; j < InflatableText.letterMeshes.length; j++) {
             const letterA = InflatableText.letterMeshes[i];
             const letterB = InflatableText.letterMeshes[j];
+
+            // Skip collision if either letter is static (clock digits)
+            if (letterA.isStatic || letterB.isStatic) continue;
 
             // Calculate distance between letters
             const dx = letterB.position.x - letterA.position.x;
@@ -888,8 +944,16 @@ function updateLetters(deltaTime) {
 
                 // Only resolve if letters are moving towards each other
                 if (relativeVelocity < 0) {
-                    // Apply collision response with bounciness
-                    const impulse = relativeVelocity * InflatableText.settings.bounciness;
+                    // Determine collision strength
+                    let collisionStrength = InflatableText.settings.bounciness;
+
+                    // If both are flying digits, use special collision strength
+                    if (letterA.isFlyingDigit && letterB.isFlyingDigit && window.ClockMode && window.ClockMode.isActive && window.ClockMode.isActive() && window.ClockMode.oldDigitSettings) {
+                        collisionStrength = window.ClockMode.oldDigitSettings.collisionStrength;
+                    }
+
+                    // Apply collision response with strength
+                    const impulse = relativeVelocity * collisionStrength;
                     letterA.velocity.x -= impulse * nx;
                     letterA.velocity.y -= impulse * ny;
                     letterB.velocity.x += impulse * nx;
@@ -910,7 +974,10 @@ function animate() {
     const deltaTime = (currentTime - lastTime) / 1000;
     lastTime = currentTime;
 
-    // OrbitControls removed - no need to update
+    // Update OrbitControls for smooth camera movement
+    if (InflatableText.controls) {
+        InflatableText.controls.update();
+    }
 
     // Update squish animation (animates bounding box size)
     updateSquishAnimation(deltaTime);
